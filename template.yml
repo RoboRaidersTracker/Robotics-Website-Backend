@@ -40,6 +40,12 @@ Resources:
       Runtime: nodejs16.x
       MemorySize: 128
       Timeout: 60
+      Events:
+        API:
+          Type: Api
+          Properties:
+            Path: /myresource
+            Method: get
       Description: A Lambda function that returns a static string.
       Policies:
         # Give Lambda basic execution Permission to the helloFromLambda

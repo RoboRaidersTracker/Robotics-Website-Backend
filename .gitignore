@@ -1,1 +1,5 @@
 node_modules
+DynamoDBLocal
+.aws
+.aws-sam
+pnpm-lock.yaml
