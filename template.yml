@@ -4,8 +4,10 @@
 # The AWSTemplateFormatVersion identifies the capabilities of the template
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
 AWSTemplateFormatVersion: 2010-09-09
-Description: >-
-  Start from scratch starter project
+Description: |
+  Backend for Team 75 RoboRaiders Website.
+  Backend developed by Eshaan Debnath.
+  Frontend developed by Aditya Kalavala and Eshaan Debnath.
 
 # Transform section specifies one or more macros that AWS CloudFormation uses to process your template
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
@@ -20,10 +22,15 @@ Globals:
     # it has to be manually updated when you add resources to your application.
     # More information in https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html
     PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${AppId}-${AWS::Region}-PermissionsBoundary'
-
-Parameters:
-  AppId:
-    Type: String
+    Runtime: nodejs16.x
+    MemorySize: 128
+    Timeout: 60
+    CodeUri: ./src/
+  Api:
+    Cors:
+      AllowMethods: "'GET, POST'"
+      AllowOrigin: "'//localhost:*/'"
+      # AllowHeaders: "'X-JS-Origin'"
 
 # Resources declares the AWS resources that you want to include in the stack
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
@@ -35,11 +42,7 @@ Resources:
   helloFromLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./
-      Handler: src/handlers/hello-from-lambda.helloFromLambdaHandler
-      Runtime: nodejs16.x
-      MemorySize: 128
-      Timeout: 60
+      Handler: auth.test
       Events:
         API:
           Type: Api
@@ -50,3 +53,4 @@ Resources:
       Policies:
         # Give Lambda basic execution Permission to the helloFromLambda
         - AWSLambdaBasicExecutionRole
+        # Update policies to work with DynamoDB?

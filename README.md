@@ -1,8 +1,48 @@
 # Run DynamoDB
 `java -D"java.library.path=./DynamoDBLocal/DynamoDBLocal_lib" -jar ./DynamoDBLocal/DynamoDBLocal.jar`
 
+`aws dynamodb list-tables`
+
+Create table (Windows):
+```
+aws dynamodb create-table ^
+    --table-name Music ^
+    --attribute-definitions ^
+        AttributeName=Artist,AttributeType=S ^
+        AttributeName=SongTitle,AttributeType=S ^
+    --key-schema ^
+        AttributeName=Artist,KeyType=HASH ^
+        AttributeName=SongTitle,KeyType=RANGE ^
+    --provisioned-throughput ^
+        ReadCapacityUnits=5,WriteCapacityUnits=5 ^
+    --table-class STANDARD
+```
+
+Create table (Linux):
+```
+aws dynamodb create-table \
+    --table-name Music \
+    --attribute-definitions \
+        AttributeName=Artist,AttributeType=S \
+        AttributeName=SongTitle,AttributeType=S \
+    --key-schema \
+        AttributeName=Artist,KeyType=HASH \
+        AttributeName=SongTitle,KeyType=RANGE \
+    --provisioned-throughput \
+        ReadCapacityUnits=5,WriteCapacityUnits=5 \
+    --table-class STANDARD
+```
+
+`aws dynamodb delete-table --table-name Music`
+
 # Run Code
 `sam local start-api`
+
+OR
+
+`sam build`
+
+`sam local invoke`
 
 # Start from scratch starter project
 
