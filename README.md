@@ -36,13 +36,17 @@ aws dynamodb create-table \
 `aws dynamodb delete-table --table-name Music`
 
 # Run Code
-`sam local start-api`
+`sam local start-api -p 80`
 
 OR
 
 `sam build`
 
 `sam local invoke`
+
+
+- ```sam local start-api -p 80 2>&1 | % {$_.ToString().replace("`r`n","`n")}```
+- ```sam local start-api -p 80 2>&1 | tr "^M" \\n```
 
 # Start from scratch starter project
 

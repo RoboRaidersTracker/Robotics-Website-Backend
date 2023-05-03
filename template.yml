@@ -24,8 +24,8 @@ Globals:
     PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${AppId}-${AWS::Region}-PermissionsBoundary'
     Runtime: nodejs16.x
     MemorySize: 128
-    Timeout: 60
-    CodeUri: ./src/
+    Timeout: 250
+    CodeUri: ./
   Api:
     Cors:
       AllowMethods: "'GET, POST'"
@@ -39,10 +39,49 @@ Resources:
   # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
 
   # This is a Lambda function config associated with the source code: hello-from-lambda.js
+  operatorPage:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src.operator.page
+      Events:
+        API:
+          Type: Api
+          Properties:
+            Path: /
+            Method: get
+      Description: A Lambda function that returns a static string.
+      # Policies:
+        # Give Lambda basic execution Permission to the helloFromLambda
+        # - AWSLambdaBasicExecutionRole
+        # Update policies to work with DynamoDB?
+  checkLogin:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src.operator.checkLogin
+      Events:
+        API:
+          Type: Api
+          Properties:
+            Path: /auth
+            Method: get
+      Description: A Lambda function that returns a static string.
+
+  loginClient:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src.operator.loginClient
+      Events:
+        API:
+          Type: Api
+          Properties:
+            Path: /auth
+            Method: post
+      Description: A Lambda function that returns a static string.
+
   helloFromLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: auth.test
+      Handler: src.auth.test
       Events:
         API:
           Type: Api
@@ -52,5 +91,5 @@ Resources:
       Description: A Lambda function that returns a static string.
       Policies:
         # Give Lambda basic execution Permission to the helloFromLambda
-        - AWSLambdaBasicExecutionRole
+        # - AWSLambdaBasicExecutionRole
         # Update policies to work with DynamoDB?

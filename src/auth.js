@@ -16,5 +16,6 @@ let helloFromLambdaHandler = async () => {
   }
 };
 
-export const test = helloFromLambdaHandler;
-export const test2 = helloFromLambdaHandler;
+module.exports = {
+  test: helloFromLambdaHandler
+};

@@ -3,12 +3,9 @@
     "description": "Start from scratch starter project",
     "version": "0.0.1",
     "private": true,
+    "type": "module",
+    "scripts": {},
     "dependencies": {
-    },
-    "devDependencies": {
-        "jest": "^25.4.0"
-    },
-    "scripts": {
-        "test": "jest"
+        "googleapis": "^118.0.0"
     }
 }
