@@ -50,10 +50,9 @@ Resources:
             Path: /
             Method: get
       Description: A Lambda function that returns a static string.
-      # Policies:
-        # Give Lambda basic execution Permission to the helloFromLambda
-        # - AWSLambdaBasicExecutionRole
-        # Update policies to work with DynamoDB?
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
   checkLogin:
     Type: AWS::Serverless::Function
     Properties:
@@ -66,6 +65,8 @@ Resources:
             Path: /auth
             Method: get
       Description: A Lambda function that returns a static string.
+      Policies:
+        - AWSLambdaBasicExecutionRole
 
   loginClient:
     Type: AWS::Serverless::Function
@@ -79,6 +80,8 @@ Resources:
             Path: /auth
             Method: post
       Description: A Lambda function that returns a static string.
+      Policies:
+        - AWSLambdaBasicExecutionRole
 
   helloFromLambdaFunction:
     Type: AWS::Serverless::Function
@@ -94,6 +97,4 @@ Resources:
             Method: get
       Description: A Lambda function that returns a static string.
       Policies:
-        # Give Lambda basic execution Permission to the helloFromLambda
-        # - AWSLambdaBasicExecutionRole
-        # Update policies to work with DynamoDB?
+        - AWSLambdaBasicExecutionRole
