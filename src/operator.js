@@ -3,7 +3,7 @@ const { google } = require("googleapis");
 // const {v4: uuid} = require('uuid');
 
 // Setup
-const pageContent = fs.readFileSync('./page.html', 'utf8', 'r');
+const pageContent = fs.readFileSync('./src/page.html', 'utf8', 'r');
 
 async function page() {
   return {
@@ -50,10 +50,11 @@ async function checkLogin(event) {
 }
 
 async function loginClient(event) {
-  const { code } = event.body;
+  const { code } = JSON.parse(event.body);
   console.log(code);
   const { tokens, oauth2Client } = getTokens(code);
   const googleID = getClientID(tokens, oauth2Client);
+  console.log(googleID);
   return {
     "statusCode": 200,
     "headers": { "Content-Type": "application/json" },
@@ -63,5 +64,6 @@ async function loginClient(event) {
 
 module.exports = {
   page,
-  checkLogin
+  checkLogin,
+  loginClient
 }

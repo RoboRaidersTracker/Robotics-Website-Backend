@@ -23,7 +23,6 @@ Globals:
     # More information in https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html
     PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${AppId}-${AWS::Region}-PermissionsBoundary'
     Runtime: nodejs16.x
-    MemorySize: 128
     Timeout: 250
     CodeUri: ./
   Api:
@@ -42,7 +41,8 @@ Resources:
   operatorPage:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src.operator.page
+      Handler: src/operator.page
+      MemorySize: 4096
       Events:
         API:
           Type: Api
@@ -57,7 +57,8 @@ Resources:
   checkLogin:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src.operator.checkLogin
+      Handler: src/operator.checkLogin
+      MemorySize: 4096
       Events:
         API:
           Type: Api
@@ -69,7 +70,8 @@ Resources:
   loginClient:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src.operator.loginClient
+      Handler: src/operator.loginClient
+      MemorySize: 4096
       Events:
         API:
           Type: Api
@@ -81,7 +83,9 @@ Resources:
   helloFromLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: src.auth.test
+      CodeUri: ./src/
+      Handler: auth.test
+      MemorySize: 128
       Events:
         API:
           Type: Api

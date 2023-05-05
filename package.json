@@ -3,7 +3,6 @@
     "description": "Start from scratch starter project",
     "version": "0.0.1",
     "private": true,
-    "type": "module",
     "scripts": {},
     "dependencies": {
         "googleapis": "^118.0.0"
