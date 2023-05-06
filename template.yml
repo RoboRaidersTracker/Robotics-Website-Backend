@@ -80,7 +80,7 @@ Resources:
         API:
           Type: Api
           Properties:
-            Path: /auth
+            Path: /auth2
             Method: post
       Description: A Lambda function that returns a static string.
       Policies:
