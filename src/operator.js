@@ -6,14 +6,16 @@ const randomstring = () => require("randomstring").generate({
   charset: "alphanumeric"
 });
 
+let pageContent = "<html><body>Initial</body></html>";
+
+try {
+  pageContent = fs.readFileSync("./src/page.html");
+} catch (error) {
+  pageContent = fs.readFileSync("./page.html");
+}
+
 // Setup
 async function page() {
-  let pageContent;
-  try {
-    pageContent = fs.readFileSync("./src/page.html");
-  } catch (error) {
-    pageContent = fs.readFileSync("./page.html");
-  }
   return {
     "statusCode": 200,
     "headers": { "Content-Type": "text/html" },
