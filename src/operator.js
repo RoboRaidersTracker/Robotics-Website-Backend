@@ -62,8 +62,8 @@ async function page() {
 //   }
 // }
 
-// module.exports = {
-//   page,
-//   checkLogin,
-//   loginClient
-// }
+module.exports = {
+  page,
+  // checkLogin,
+  // loginClient
+}
