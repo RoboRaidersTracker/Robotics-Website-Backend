@@ -26,10 +26,10 @@ Globals:
     Timeout: 200
     CodeUri: ./
     MemorySize: 128
-  Api:
-    Cors:
-      AllowMethods: "'GET, POST'"
-      AllowOrigin: "'//localhost:*/'"
+  # Api:
+  #   Cors:
+  #     AllowMethods: "'GET, POST'"
+  #     AllowOrigin: "'//localhost:*/'"
 
 Parameters:
   AppId:
