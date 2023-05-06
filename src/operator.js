@@ -9,9 +9,9 @@ const randomstring = () => require("randomstring").generate({
 let pageContent = "<html><body>Initial</body></html>";
 
 try {
-  pageContent = fs.readFileSync("./src/page.html");
+  pageContent = fs.readFileSync("./src/page.html", "utf-8");
 } catch (error) {
-  pageContent = fs.readFileSync("./page.html");
+  pageContent = fs.readFileSync("./page.html", "utf-8");
 }
 
 // Setup

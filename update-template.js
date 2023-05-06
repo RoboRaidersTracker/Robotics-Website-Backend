@@ -2,7 +2,7 @@ const YAML = require("yaml");
 const fs = require("fs");
 
 module.exports.compile = () => {
-  const yaml = fs.readFileSync("./template-base.yml");
+  const yaml = fs.readFileSync("./template-base.yml", "utf-8");
   const json = require("./template-resources.json");
   const doc = new YAML.Document();
 
