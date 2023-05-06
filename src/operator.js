@@ -28,8 +28,6 @@ const newClient = () => new google.auth.OAuth2(
   "672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com",
   "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",
   origin
-  // "http://localhost"
-  // "https://0uih3ehfi2.execute-api.us-east-1.amazonaws.com"
 );
 
 const peopleAPI = google.people({
@@ -66,7 +64,8 @@ async function checkLogin(event) {
 }
 
 async function loginClient(event) {
-  origin = "https://" + event.headers.Host
+  console.log(event.headers);
+  origin = event.headers.Host = "localhost" ? "http://localhost" : "https://" + event.headers.Host
   const { code } = JSON.parse(event.body);
   const { tokens, oauth2Client } = await getTokens(code);
   const googleID = await getClientID(tokens, oauth2Client);

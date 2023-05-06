@@ -18,10 +18,10 @@ const json = require("./template-resources.json");
     el.Properties.Events.API.Properties.Path, async (req, res) => {
       awsData = {};
       awsData["httpMethod"] = req.method.toUpperCase();
-      req.get("Cookie") && (awsData["headers"] = {
-        "Cookie": req.get("Cookie").split(";").map(el => el.trim()),
-        "Host": req.get("Host")
-      });
+      awsData["headers"] = {"Host": req.get("Host")};
+      if (req.get("Cookie")){
+        awsData["headers"]["Cookie"] = req.get("Cookie").split(";").map(el => el.trim());
+      }
       awsData["body"] = Object.keys(req.body).length == 0 ? null : JSON.stringify(req.body);
       awsData["path"] = req.path
 
