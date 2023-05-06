@@ -26,7 +26,7 @@ function signIn(){
     callback: (response) => {
       fetch("./auth", {
         method: "POST",
-        body: JSON.stringify({code: response.code}),
+        body: JSON.stringify({code: response.code, host: document.location.host}),
         headers: {
           "Content-Type": "application/json",
           "X-Requested-With": "javascript-fetch"
