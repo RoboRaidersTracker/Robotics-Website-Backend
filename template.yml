@@ -22,6 +22,10 @@ Globals:
     # it has to be manually updated when you add resources to your application.
     # More information in https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html
     PermissionsBoundary: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${AppId}-${AWS::Region}-PermissionsBoundary'
+    Runtime: nodejs16.x
+    Timeout: 200
+    CodeUri: ./
+    MemorySize: 128
 
 Parameters:
   AppId:
@@ -39,9 +43,6 @@ Resources:
     Properties:
       CodeUri: ./src/
       Handler: auth.test
-      MemorySize: 128
-      Runtime: nodejs16.x
-      Timeout: 60
       Events:
         API:
           Type: Api
