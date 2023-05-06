@@ -65,7 +65,7 @@ async function checkLogin(event) {
 
 async function loginClient(event) {
   console.log(event.headers);
-  origin = event.headers.Host = "localhost" ? "http://localhost" : "https://" + event.headers.Host
+  origin = event.headers.Host == "localhost" ? "http://localhost" : "https://" + event.headers.Host
   const { code } = JSON.parse(event.body);
   const { tokens, oauth2Client } = await getTokens(code);
   const googleID = await getClientID(tokens, oauth2Client);
