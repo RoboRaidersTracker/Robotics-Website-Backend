@@ -1,11 +1,19 @@
-const fs = require('fs');
+const fs = require("fs");
 const { google } = require("googleapis");
-// const {v4: uuid} = require('uuid');
+const { v1 } = require("uuid");
+const randomstring = () => require("randomstring").generate({
+  length: 16,
+  charset: "alphanumeric"
+});
 
 // Setup
-const pageContent = fs.readFileSync('./src/page.html', 'utf8', 'r');
-
 async function page() {
+  let pageContent;
+  try {
+    pageContent = fs.readFileSync("./src/page.html");
+  } catch (error) {
+    pageContent = fs.readFileSync("./page.html");
+  }
   return {
     "statusCode": 200,
     "headers": { "Content-Type": "text/html" },
@@ -25,13 +33,13 @@ const peopleAPI = google.people({
 });
 
 async function getTokens(code, oauth2Client) {
-  let client = oauth2Client || new newClient();
+  let client = oauth2Client || newClient();
   let { tokens } = await client.getToken(code);
   return { tokens, client };
 }
 
 async function getClientID(tokens, oauth2Client) {
-  let client = oauth2Client || new newClient();
+  let client = oauth2Client || newClient();
   client.setCredentials(tokens);
 
   let response = await peopleAPI.people.get({
@@ -50,10 +58,11 @@ async function checkLogin(event) {
 }
 
 async function loginClient(event) {
+  console.log(event);
   const { code } = JSON.parse(event.body);
   console.log(code);
-  const { tokens, oauth2Client } = getTokens(code);
-  const googleID = getClientID(tokens, oauth2Client);
+  const { tokens, oauth2Client } = await getTokens(code);
+  const googleID = await getClientID(tokens, oauth2Client);
   console.log(googleID);
   return {
     "statusCode": 200,

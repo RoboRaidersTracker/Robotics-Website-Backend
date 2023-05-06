@@ -5,6 +5,12 @@
     "private": true,
     "scripts": {},
     "dependencies": {
-        "googleapis": "^118.0.0"
+        "googleapis": "^118.0.0",
+        "randomstring": "^1.2.3",
+        "uuid": "^9.0.0"
+    },
+    "devDependencies": {
+        "express": "^4.18.2",
+        "yaml": "^2.2.2"
     }
 }
