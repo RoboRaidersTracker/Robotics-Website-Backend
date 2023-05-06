@@ -27,7 +27,7 @@ async function page() {
 const newClient = () => new google.auth.OAuth2(
   "672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com",
   "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",
-  "http://localhost"
+  "https://0uih3ehfi2.execute-api.us-east-1.amazonaws.com"
 );
 
 const peopleAPI = google.people({
