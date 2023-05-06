@@ -19,7 +19,8 @@ const json = require("./template-resources.json");
       awsData = {};
       awsData["httpMethod"] = req.method.toUpperCase();
       req.get("Cookie") && (awsData["headers"] = {
-        "Cookie": req.get("Cookie").split(";").map(el => el.trim())
+        "Cookie": req.get("Cookie").split(";").map(el => el.trim()),
+        "Host": req.get("Host")
       });
       awsData["body"] = Object.keys(req.body).length == 0 ? null : JSON.stringify(req.body);
       awsData["path"] = req.path

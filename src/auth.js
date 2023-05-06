@@ -11,7 +11,6 @@ let helloFromLambdaHandler = async (event) => {
 
   let t = new Date();
   t.setSeconds(t.getSeconds() + 10);
-  console.log(event)
 
   return {
     "statusCode": 200,

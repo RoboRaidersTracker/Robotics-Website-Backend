@@ -6,7 +6,7 @@ const randomstring = () => require("randomstring").generate({
   charset: "alphanumeric"
 });
 
-let pageContent = "<html><body>Initial</body></html>";
+let pageContent, origin;
 
 try {
   pageContent = fs.readFileSync("./src/page.html", "utf-8");
@@ -27,7 +27,8 @@ async function page() {
 const newClient = () => new google.auth.OAuth2(
   "672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com",
   "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",
-  "https://0uih3ehfi2.execute-api.us-east-1.amazonaws.com"
+  "http://localhost"
+  // "https://0uih3ehfi2.execute-api.us-east-1.amazonaws.com"
 );
 
 const peopleAPI = google.people({
@@ -46,11 +47,15 @@ async function getClientID(tokens, oauth2Client) {
 
   let response = await peopleAPI.people.get({
     resourceName: "people/me",
-    personFields: "names,photos",
+    personFields: "emailAddresses",
     auth: client,
   });
 
-  return response.data.resourceName.slice(7);
+  // Extract ID from "people/[ID]"
+  return {
+    id: response.data.resourceName.split("/")[1],
+    email: response.data.emailAddresses[0].value
+  };
 }
 
 async function checkLogin(event) {
@@ -60,12 +65,10 @@ async function checkLogin(event) {
 }
 
 async function loginClient(event) {
-  console.log(event);
+  origin = "https://" + event.headers.Host
   const { code } = JSON.parse(event.body);
-  console.log(code);
   const { tokens, oauth2Client } = await getTokens(code);
   const googleID = await getClientID(tokens, oauth2Client);
-  console.log(googleID);
   return {
     "statusCode": 200,
     "headers": { "Content-Type": "application/json" },
