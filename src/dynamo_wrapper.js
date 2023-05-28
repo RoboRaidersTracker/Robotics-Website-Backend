@@ -1,6 +1,6 @@
 const { DynamoDB, PutItemCommand, CreateTableCommand, ListTablesCommand, QueryCommand } = require("@aws-sdk/client-dynamodb");
 const uuid_v1 = require("uuid").v1;
-const { local } = require("./preparation.js");
+const { local } = require("./detect_local.js");
 
 let ddb;
 if (local){

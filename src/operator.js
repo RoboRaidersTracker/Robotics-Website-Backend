@@ -1,10 +1,13 @@
+const { readFileSync } = require("fs");
 const { addStudent, getUserUUID } = require("./dynamo_wrapper");
 const { getTokens, getClientID } = require("./google_oauth");
-const { local, pageCode } = require("./preparation.js");
+const { local } = require("./detect_local.js");
 const newSession = () => require("randomstring").generate({
   length: 20,
   charset: "alphanumeric"
 });
+
+const pageCode = readFileSync("./src/page.html", "utf-8");
 
 // Setup
 async function page() {

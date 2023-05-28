@@ -8,10 +8,4 @@ try {
   local = false;
 }
 
-if (local){
-  pageCode = readFileSync("./src/page.html", "utf-8");
-} else {
-  pageCode = readFileSync("./page.html", "utf-8");
-}
-
-module.exports = { local, pageCode };
+module.exports = { local };
