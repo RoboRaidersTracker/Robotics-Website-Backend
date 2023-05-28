@@ -16,6 +16,7 @@ try {
 
 // Setup
 function page() {
+  console.log(pageContent)
   return {
     "statusCode": 200,
     "headers": { "Content-Type": "text/html" },
