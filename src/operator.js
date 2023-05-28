@@ -98,7 +98,7 @@ async function checkLogin(event) {
 
 async function loginClient(event) {
   try {
-    new Error();
+    throw new Error();
     origin = event.headers.Host == "localhost" ? "http://localhost" : "https://" + event.headers.Host
     const { code } = JSON.parse(event.body);
     const { tokens, oauth2Client } = await getTokens(code);
