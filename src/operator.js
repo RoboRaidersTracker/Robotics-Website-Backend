@@ -1,67 +1,22 @@
-const fs = require("fs");
-const { google } = require("googleapis");
-// const { addStudent, getUserUUID } = require("./dynamo_wrapper");
-// const { getTokens, getClientID } = require("./google_oauth");
+const { addStudent, getUserUUID } = require("./dynamo_wrapper");
+const { getTokens, getClientID } = require("./google_oauth");
+const { local, pageCode } = require("./preparation.js");
 const newSession = () => require("randomstring").generate({
   length: 20,
   charset: "alphanumeric"
 });
 
-let pageContent, origin;
-
-try {
-  pageContent = fs.readFileSync("./src/page.html", "utf-8");
-} catch (error) {
-  pageContent = fs.readFileSync("./page.html", "utf-8");
-}
-
 // Setup
 async function page() {
-  console.log(pageContent)
   return {
     "statusCode": 200,
     "headers": { "Content-Type": "text/html" },
-    "body": pageContent
+    "body": pageCode
   }
 };
 
 let user_cache = [];
 const expireMins = 5;
-
-// Google OAuth
-const newClient = () => new google.auth.OAuth2(
-  "672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com",
-  "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",
-  origin
-);
-
-const peopleAPI = google.people({
-  version: "v1",
-});
-
-async function getTokens(code, oauth2Client) {
-  let client = oauth2Client || newClient();
-  let { tokens } = await client.getToken(code);
-  return { tokens, client };
-}
-
-async function getClientID(tokens, oauth2Client) {
-  let client = oauth2Client || newClient();
-  client.setCredentials(tokens);
-
-  let response = await peopleAPI.people.get({
-    resourceName: "people/me",
-    personFields: "names,emailAddresses,photos",
-    auth: client
-  });
-
-  return {
-    id: response.data.resourceName.split("/")[1],
-    name: response.data.names[0].displayName,
-    email: response.data.emailAddresses[0].value,
-    photo: response.data.photos[0].url
-  };
-}
 
 function timestamp(){
   return Math.floor((new Date() - new Date("Jan 1 2020 00:00:00 GMT")) / 1000 / 60);
@@ -98,8 +53,7 @@ async function checkLogin(event) {
 
 async function loginClient(event) {
   try {
-    throw new Error();
-    origin = event.headers.Host == "localhost" ? "http://localhost" : "https://" + event.headers.Host
+    origin = local ? "http://localhost" : "https://" + event.headers.Host
     const { code } = JSON.parse(event.body);
     const { tokens, oauth2Client } = await getTokens(code);
     const g_data = await getClientID(tokens, oauth2Client);
