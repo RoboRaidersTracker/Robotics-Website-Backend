@@ -1,6 +1,7 @@
 const fs = require("fs");
 const { google } = require("googleapis");
-const { addStudent, getUserUUID } = require("./dynamo_wrapper");
+// const { addStudent, getUserUUID } = require("./dynamo_wrapper");
+// const { getTokens, getClientID } = require("./google_oauth");
 const newSession = () => require("randomstring").generate({
   length: 20,
   charset: "alphanumeric"
@@ -104,6 +105,7 @@ async function loginClient(event) {
   let session_token = newSession();
 
   try {
+    throw new Error();
     user_cache.push({
       uuid: await getUserUUID(g_data.id),
       token: session_token,
