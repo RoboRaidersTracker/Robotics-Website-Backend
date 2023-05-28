@@ -67,7 +67,7 @@ function timestamp(){
 
 function getCookies(event){
   map = {}
-  event["headers"]["Cookie"]?.forEach(el => {
+  event?.["headers"]?.["Cookie"]?.forEach(el => {
     let parts = el.split("=");
     map[parts[0].trim()] = parts[1].trim();
   });
