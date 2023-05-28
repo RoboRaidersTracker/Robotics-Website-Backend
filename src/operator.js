@@ -16,7 +16,7 @@ try {
 }
 
 // Setup
-function page() {
+async function page() {
   console.log(pageContent)
   return {
     "statusCode": 200,
