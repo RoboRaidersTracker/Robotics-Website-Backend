@@ -4,7 +4,7 @@ const uuid_v1 = require("uuid").v1;
 const ddb = new DynamoDB({
   // aws_access_key_id: "85z0k6",
   // aws_secret_access_key: "78mz0f",
-  region: 'localhost',
+  region: 'us-east-1',
   // endpoint: "http://localhost:8000"
 });
 
