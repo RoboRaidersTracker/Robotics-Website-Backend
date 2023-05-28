@@ -1,7 +1,7 @@
 # Run DynamoDB
 `java -D"java.library.path=./DynamoDBLocal/DynamoDBLocal_lib" -jar ./DynamoDBLocal/DynamoDBLocal.jar`
 
-`aws dynamodb list-tables`
+`aws dynamodb list-tables --endpoint-url http://localhost:8000`
 
 Create table (Windows):
 ```
