@@ -97,15 +97,15 @@ async function checkLogin(event) {
 }
 
 async function loginClient(event) {
-  origin = event.headers.Host == "localhost" ? "http://localhost" : "https://" + event.headers.Host
-  const { code } = JSON.parse(event.body);
-  const { tokens, oauth2Client } = await getTokens(code);
-  const g_data = await getClientID(tokens, oauth2Client);
-
-  let session_token = newSession();
-
   try {
-    throw new Error();
+    new Error();
+    origin = event.headers.Host == "localhost" ? "http://localhost" : "https://" + event.headers.Host
+    const { code } = JSON.parse(event.body);
+    const { tokens, oauth2Client } = await getTokens(code);
+    const g_data = await getClientID(tokens, oauth2Client);
+
+    let session_token = newSession();
+
     user_cache.push({
       uuid: await getUserUUID(g_data.id),
       token: session_token,
