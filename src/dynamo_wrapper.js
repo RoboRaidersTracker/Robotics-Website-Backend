@@ -153,7 +153,7 @@ async function cleanSessionsDB(expireMins, currTime) {
 }
 
 /* ----- Users ----- */
-
+// Add functions
 async function addUserDB(g_id, g_name, g_email, g_photo, department_name, tags) {
   if (await loginUserDB(g_id) != undefined) {
     return;
@@ -210,6 +210,7 @@ async function addUserDB(g_id, g_name, g_email, g_photo, department_name, tags) 
   ddb.send(new PutItemCommand(query));
 }
 
+// Get functions
 async function loginUserDB(g_id) {
   if (typeof g_id === "number") {
     g_id = g_id.toString();
@@ -269,6 +270,7 @@ async function getUserInitiativeDataDB(user_id) {
   return res.Item;
 }
 
+// Update functions
 async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, duration, timestamp) {
   // Check if initiative exists
 
@@ -315,9 +317,66 @@ async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, dura
   ddb.send(new UpdateItemCommand(query));
 }
 
+async function updateUserDB(user_id, data){
+  // Write later
+}
+
+// Delete functions
+async function batchCleanUsersDB(user_ids) {
+  if (typeof user_ids === "string") {
+    user_ids = [user_ids];
+  }
+
+  let putItems = [];
+
+  user_ids.forEach(user_id => {
+    putItems.push({
+      PutRequest: {
+        Item: {
+          "user_id": { "S": user_id },
+          "initiative_data": { "L": [] },
+          "attendance": { "L": [] }
+        }
+      }
+    })
+  })
+
+  for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
+    let slice = putItems.slice(i * 25, i * 25 + 25);
+    query = { RequestItems: {} };
+    query["RequestItems"]["team75_tracking_students"] = slice;
+    await ddb.send(new BatchWriteItemCommand(query));
+  }
+}
+
+async function batchDeleteUsersDB(user_ids) {
+  if (typeof user_ids === "string") {
+    user_ids = [user_ids];
+  }
+
+  let delItems = [];
+
+  user_ids.forEach(user_id => {
+    delItems.push({
+      DeleteRequest: {
+        Key: {
+          "user_id": { "S": user_id }
+        }
+      }
+    })
+  })
+
+  for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
+    let slice = delItems.slice(i * 25, i * 25 + 25);
+    query = { RequestItems: {} };
+    query["RequestItems"]["team75_tracking_students"] = slice;
+    await ddb.send(new BatchWriteItemCommand(query));
+  }
+}
+
 /* ----- Initiatives ----- */
 
-async function addInitiative(initiative_name, categories, leads){
+async function addInitiative(initiative_name, categories, leads) {
   if (typeof leads === "string") {
     leads = [leads]
   }
@@ -333,7 +392,7 @@ async function addInitiative(initiative_name, categories, leads){
   }
 
   let leadObj = {};
-  for (let lead of leads){
+  for (let lead of leads) {
     leadObj[lead] = { "L": [] };
   }
 
@@ -367,7 +426,7 @@ async function addInitiative(initiative_name, categories, leads){
   ddb.send(new PutItemCommand(query));
 }
 
-async function getInitiative(initiative_id){
+async function getInitiative(initiative_id) {
   let query = {
     "TableName": "team75_tracking_initiatives",
     "ConsistentRead": true,
@@ -384,14 +443,14 @@ async function getInitiative(initiative_id){
   return res.Item;
 }
 
-async function getAllInitiatives(){
+async function getAllInitiatives() {
   let query = {
     "TableName": "team75_tracking_initiatives",
     "ConsistentRead": true,
     "ProjectionExpression": "initiative_id,initiative_name,categories,total_mins,total_participants,leads"
   }
 
-  let res = await ddb.send(new GetItemCommand(query));
+  let res = await ddb.send(new ScanCommand(query));
 
   return res.Items;
 }
@@ -403,6 +462,8 @@ module.exports = {
   cleanSessionsDB,
   addUserDB,
   loginUserDB,
+  batchCleanUsersDB,
+  batchDeleteUsersDB,
   getUserOverviewDB,
   getUserInitiativeDataDB,
   addInitiativeDataToUserDB

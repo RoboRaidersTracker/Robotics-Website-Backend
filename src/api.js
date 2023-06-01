@@ -6,9 +6,11 @@ const {
   cleanSessionsDB,
   addUserDB,
   loginUserDB,
+  batchCleanUsersDB,
+  batchDeleteUsersDB,
   getUserOverviewDB,
-  addInitiativeDataToUserDB,
-  getUserInitiativeDataDB
+  getUserInitiativeDataDB,
+  addInitiativeDataToUserDB
 } = require("./dynamo_wrapper");
 const { setOrigin, getTokens, getClientID } = require("./google_oauth");
 const newSession = () => require("randomstring").generate({
@@ -179,6 +181,46 @@ async function getUserOverview(cookies, body) {
   }
 }
 
+async function batchDeleteUsers(cookies, body) {
+  // Check user + update local cache
+  if ((await checkLogin(cookies)).statusCode != 200) {
+    return {
+      statusCode: 400
+    }
+  }
+
+  // Check if user has access
+  let user = user_cache.find(el => el.session_token == cookies["session-token"]);
+  if (!user.tags.includes("mentor")) {
+    return {
+      statusCode: 403
+    }
+  }
+
+  batchDeleteUsersDB(body.user_id || body.user_ids);
+  return { statusCode: 200 }
+}
+
+async function batchCleanUsers(cookies, body) {
+  // Check user + update local cache
+  if ((await checkLogin(cookies)).statusCode != 200) {
+    return {
+      statusCode: 400
+    }
+  }
+
+  // Check if user has access
+  let user = user_cache.find(el => el.session_token == cookies["session-token"]);
+  if (!user.tags.includes("mentor")) {
+    return {
+      statusCode: 403
+    }
+  }
+
+  batchCleanUsersDB(body.user_id || body.user_ids);
+  return { statusCode: 200 }
+}
+
 async function getUserInitiativeData(cookies, body) {
   // Check user + update local cache
   if ((await checkLogin(cookies)).statusCode != 200) {
@@ -188,7 +230,7 @@ async function getUserInitiativeData(cookies, body) {
   }
 
   // Check if user has access
-  let user = user_cache.find(el => el.session_token == cookies.session - token);
+  let user = user_cache.find(el => el.session_token == cookies["session-token"]);
   if (body.user_id && user.user_id != body.user_id && !user.tags.includes("mentor")) {
     return {
       statusCode: 403
@@ -222,7 +264,7 @@ async function addInitiativeDataToUser(cookies, body) {
   let { user_id, initiative_id, prep_time, duration } = body;
 
   // Check if user has access
-  let user = user_cache.find(el => el.session_token == cookies.session - token);
+  let user = user_cache.find(el => el.session_token == cookies["session-token"]);
   if (user_id && user.user_id != user_id) {
     return {
       statusCode: 403
