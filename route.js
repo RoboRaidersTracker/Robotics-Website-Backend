@@ -1,45 +1,34 @@
 const express = require('express');
+const { route } = require('./src/router');
 const app = express();
 const PORT = 80;
-const { compile } = require("./update-template");
-compile();
 
 app.disable('etag');
 app.use(express.json())
 
-const json = require("./template-resources.json");
-[...Object.values(json.Resources)].forEach( el => {
-  let func, url = el.Properties.CodeUri || "./";
-  url += el.Properties.Handler;
-  url = url.split(".");
-  func = require("." + url[1])[url[2]];
+app.use(async (req, res) => {
+  req["cookies"] = req.get("Cookie")?.split(";")?.map(el => el.trim()) || [];
+  req["headers"]["origin"] = req.get('origin');
+  req["requestContext"] = {};
+  req["requestContext"]["http"] = {};
+  req["requestContext"]["http"]["path"] = req.path;
+  req["requestContext"]["http"]["method"] = req.method;
+  req["body"] = JSON.stringify(req.body);
 
-  app[el.Properties.Events.API.Properties.Method](
-    el.Properties.Events.API.Properties.Path, async (req, res) => {
-      awsData = {};
-      awsData["httpMethod"] = req.method.toUpperCase();
-      awsData["headers"] = {"Host": req.get("Host")};
-      if (req.get("Cookie")){
-        awsData["headers"]["Cookie"] = req.get("Cookie").split(";").map(el => el.trim());
-      }
-      awsData["body"] = Object.keys(req.body).length == 0 ? null : JSON.stringify(req.body);
-      awsData["path"] = req.path
+  response = await route(req);
 
-      let retVal = await func(awsData);
-
-      res.status(retVal.statusCode);
-      res.header(retVal.headers);
-      res.header("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.header("Pragma", "no-cache");
-      res.header("Expires", 0);
-      res.send(retVal.body);
-      res.end();
-    }
-  )
+  res.status(response?.statusCode);
+  res.header(response.headers);
+  res.header("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.header("Pragma", "no-cache");
+  res.header("Expires", 0);
+  res.send(response.body);
+  res.end();
 })
 
 app.listen(PORT, function (err) {
   if (err) {
+    console.log("Make sure to add `local_file.txt`. Here's the error:")
     console.log(err);
   }
   console.log("Server listening on PORT", PORT);

@@ -1,0 +1,132 @@
+{
+  "sessions": {
+    "TableName": "team75_tracking_sessions",
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "session_token",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "timestamp",
+        "AttributeType": "N"
+      }
+    ],
+    "KeySchema": [
+      {
+        "AttributeName": "session_token",
+        "KeyType": "HASH"
+      },
+      {
+        "AttributeName": "timestamp",
+        "KeyType": "RANGE"
+      }
+    ],
+    "BillingMode": "PROVISIONED",
+    "ProvisionedThroughput": {
+      "ReadCapacityUnits": 1,
+      "WriteCapacityUnits": 1
+    },
+    "SSESpecification": {
+      "Enabled": false
+    },
+    "StreamSpecification": {
+      "StreamEnabled": false
+    },
+    "TableClass": "STANDARD"
+  },
+  "students": {
+    "TableName": "team75_tracking_students",
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "user_id",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "google_id",
+        "AttributeType": "S"
+      }
+    ],
+    "KeySchema": [
+      {
+        "AttributeName": "user_id",
+        "KeyType": "HASH"
+      }
+    ],
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "SecureLogin",
+        "KeySchema": [
+          {
+            "AttributeName": "google_id",
+            "KeyType": "HASH"
+          }
+        ],
+        "Projection": {
+          "ProjectionType": "INCLUDE",
+          "NonKeyAttributes": [
+            "department_name",
+            "tags"
+          ]
+        },
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 1,
+          "WriteCapacityUnits": 1
+        }
+      }
+    ],
+    "BillingMode": "PROVISIONED",
+    "ProvisionedThroughput": {
+      "ReadCapacityUnits": 10,
+      "WriteCapacityUnits": 10
+    },
+    "SSESpecification": {
+      "Enabled": false
+    },
+    "StreamSpecification": {
+      "StreamEnabled": false
+    },
+    "TableClass": "STANDARD"
+  },
+  "initiatives": {
+    "TableName": "team75_tracking_initiatives",
+    "KeySchema": [
+      {
+        "AttributeName": "initiative_id",
+        "KeyType": "HASH"
+      }
+    ],
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "initiative_id",
+        "AttributeType": "S"
+      }
+    ],
+    "BillingMode": "PROVISIONED",
+    "ProvisionedThroughput": {
+      "ReadCapacityUnits": 5,
+      "WriteCapacityUnits": 5
+    },
+    "TableClass": "STANDARD"
+  },
+  "departments": {
+    "TableName": "team75_tracking_departments",
+    "KeySchema": [
+      {
+        "AttributeName": "department_name",
+        "KeyType": "HASH"
+      }
+    ],
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "department_name",
+        "AttributeType": "S"
+      }
+    ],
+    "BillingMode": "PROVISIONED",
+    "ProvisionedThroughput": {
+      "ReadCapacityUnits": 1,
+      "WriteCapacityUnits": 1
+    },
+    "TableClass": "STANDARD_INFREQUENT_ACCESS"
+  }
+}

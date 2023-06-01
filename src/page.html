@@ -10,6 +10,9 @@
 <body>
 
 <div class="sign-in"><button>Sign In</button></div>
+<div class="get-user-data"><button>Get User Data</button></div>
+<div class="log-hours"><button>Log Hours</button></div>
+<div class="get-hours"><button>Get Hours</button></div>
 
 <script>
 // function setProfile(profileName, profilePicURL){
@@ -22,16 +25,16 @@ function signIn(){
   const client = google.accounts.oauth2.initCodeClient({
     client_id: '672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com',
     // scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/directory.readonly',
-    scope: 'https://www.googleapis.com/auth/userinfo.profile',
+    scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
     ux_mode: 'popup',
     callback: (response) => {
       fetch("./auth", {
         method: "POST",
-        body: JSON.stringify({code: response.code, host: document.location.host}),
         headers: {
           "Content-Type": "application/json",
           "X-Requested-With": "javascript-fetch"
-        }
+        },
+        body: JSON.stringify({code: response.code, host: document.location.host})
       })
       .then(res => res.json())
       .then(data => console.log(data))
@@ -39,6 +42,53 @@ function signIn(){
   });
 
   client.requestCode()
+}
+
+function getUserData(){
+  fetch("./user", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({"user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa"})
+  }).then(
+    async data => console.log(await data.json()),
+    async err => console.log(err)
+  )
+}
+
+function logHours(){
+  fetch("./user-log", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({
+      "user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa",
+      "initiative_id": "aaa",
+      "prep_time": true,
+      "duration": 500
+    })
+  }).then(
+    async data => console.log(await data.json()),
+    async err => console.log(err)
+  )
+}
+
+function getHours(){
+  fetch("./user-initiatives", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({ "user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa" })
+  }).then(
+    async data => console.log(await data.json()),
+    async err => console.log(err)
+  )
 }
 
 // Send custom headers for authentication
@@ -52,14 +102,19 @@ fetch("./auth", {
   // Switch for error code?
   if (res.status != 200){
     // Display log in button
-    let button = document.getElementsByClassName("sign-in")[0]
-    return button.children[0].addEventListener("click", signIn)
+    document.getElementsByClassName("sign-in")[0]
+      .children[0].addEventListener("click", signIn);
+    return;
   }
 
-  // Display profile data
-  let data = await res.json()
-  console.log(data);
-  // setProfile(data.name, data.photo)
+  console.log(await res.json());
+
+  document.getElementsByClassName("get-user-data")[0]
+    .children[0].addEventListener("click", getUserData);
+  document.getElementsByClassName("log-hours")[0]
+    .children[0].addEventListener("click", logHours);
+  document.getElementsByClassName("get-hours")[0]
+    .children[0].addEventListener("click", getHours);
 })
 
 </script>

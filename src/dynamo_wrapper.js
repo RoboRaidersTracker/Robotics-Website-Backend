@@ -1,32 +1,39 @@
-const { DynamoDB, PutItemCommand, CreateTableCommand, ListTablesCommand, QueryCommand } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDB,
+  PutItemCommand,
+  CreateTableCommand,
+  ListTablesCommand,
+  QueryCommand,
+  BatchWriteItemCommand,
+  ScanCommand,
+  GetItemCommand,
+  UpdateItemCommand
+} = require("@aws-sdk/client-dynamodb");
 const uuid_v1 = require("uuid").v1;
-const { local } = require("./detect_local.js");
 
 let ddb;
-if (local){
-  ddb = new DynamoDB({
-    aws_access_key_id: "85z0k6",
-    aws_secret_access_key: "78mz0f",
-    region: "localhost",
-    endpoint: "http://localhost:8000"
-  });
-} else {
+try {
+  ddb = new DynamoDB(require("./local.json"))
+} catch (error) {
   ddb = new DynamoDB({ region: "us-east-1" });
 }
 
 const tables = {
   sessions: "team75_tracking_sessions",
   students: "team75_tracking_students",
-  initiatives: "team75_tracking_initiatives"
+  initiatives: "team75_tracking_initiatives",
+  departments: "team75_tracking_departments"
 }
 
-// function log(obj) {
-//   console.dir(obj, { depth: null })
-// }
+/* ----- Setup + Init Data ----- */
 
-// Init
-ddb.send(new ListTablesCommand({})).then(async res => {
-  const schemas = require("./data_structure");
+initDB();
+
+async function initDB() {
+  let res = await ddb.send(new ListTablesCommand({}))
+
+  // Create tables if they don't exist
+  const schemas = require("./data_structure.json");
   const currTables = res.TableNames;
   for (const table of Object.entries(tables)) {
     if (!currTables.includes(table[1])) {
@@ -35,30 +42,146 @@ ddb.send(new ListTablesCommand({})).then(async res => {
       );
     }
   }
-})
 
-function addStudent(g_ID, g_name, g_email, g_photo, status) {
-  if (typeof g_ID === "number") {
-    g_ID = g_ID.toString();
-  }
-  if (typeof status === "string") {
-    status = [{ "S": status }]
-  } else if (Array.isArray(status)) {
-    status = status.map(el => { return { "S": el } })
-  }
-  let userID = uuid_v1();
+  // Add init data
+  initSampleData();
+}
 
-  let student_data = {
+async function initSampleData() {
+  try {
+    await addUserDB(
+      "114409764148443206366",
+      "Eshaan Debnath",
+      "eshaandebnath@gmail.com",
+      "https://lh3.googleusercontent.com/a/AAcHTtfsmybpx59Z8dwUWN1saEu0Cm8Pwsl_h_PKns9e5w=s100",
+      "Programming",
+      "mentor"
+    )
+  } catch { }
+  try {
+    await addInitiative(
+      "Initiative Name",
+      ["STEM", "Internal"],
+      "56d26180-ff2e-11ed-ac97-659b7a975caa"
+    )
+  } catch { }
+}
+
+/* ----- Session Management ----- */
+
+async function addSessionDB(session_token, timestamp, user_id, department_name, tags) {
+  if (typeof timestamp === "number") {
+    timestamp = timestamp.toString();
+  }
+
+  if (typeof tags === "string") {
+    tags = [{ "S": tags }]
+  } else if (Array.isArray(tags)) {
+    tags = tags.map(el => { return { "S": el } })
+  }
+
+  let query = {
+    "TableName": "team75_tracking_sessions",
+    "Item": {
+      "session_token": {
+        "S": session_token
+      },
+      "timestamp": {
+        "N": timestamp
+      },
+      "user_id": {
+        "S": user_id
+      },
+      "department_name": {
+        "S": department_name
+      },
+      "tags": {
+        "L": tags
+      }
+    }
+  }
+
+  ddb.send(new PutItemCommand(query));
+}
+
+async function findSessionDB(session_token) {
+  let query = {
+    "TableName": "team75_tracking_sessions",
+    "ScanIndexForward": true,
+    "ConsistentRead": true,
+    "KeyConditionExpression": "session_token = :session_token",
+    "ExpressionAttributeValues": {
+      ":session_token": {
+        "S": session_token
+      }
+    }
+  }
+
+  let res = await ddb.send(new QueryCommand(query));
+
+  return res.Items[0];
+}
+
+async function cleanSessionsDB(expireMins, currTime) {
+  let query = {
+    "TableName": "team75_tracking_sessions",
+    "ConsistentRead": true,
+    "ProjectionExpression": "timestamp,session_token"
+  }
+
+  let res = await ddb.send(new ScanCommand(query)), delItems = [];
+
+  res.Items.forEach(session => {
+    if (parseInt(session.timestamp.N) + expireMins < currTime) {
+      delItems.push({
+        DeleteRequest: {
+          Key: {
+            "session_token": session.session_token,
+            "timestamp": session.timestamp
+          }
+        }
+      })
+    }
+  })
+
+  for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
+    let slice = delItems.slice(i * 25, i * 25 + 25);
+    query = { RequestItems: {} };
+    query["RequestItems"][tables["sessions"]] = slice;
+    await ddb.send(new BatchWriteItemCommand(query));
+  }
+}
+
+/* ----- Users ----- */
+
+async function addUserDB(g_id, g_name, g_email, g_photo, department_name, tags) {
+  if (await loginUserDB(g_id) != undefined) {
+    return;
+  }
+
+  let user_id = uuid_v1();
+
+  if (typeof g_id === "number") {
+    g_id = g_id.toString();
+  }
+
+  if (typeof tags === "string") {
+    tags = [{ "S": tags }]
+  } else if (Array.isArray(tags)) {
+    tags = tags.map(el => { return { "S": el } })
+  }
+
+  let query = {
     "TableName": "team75_tracking_students",
     "Item": {
       "user_id": {
-        "S": userID
+        "S": g_id == "114409764148443206366" ? "56d26180-ff2e-11ed-ac97-659b7a975caa" : user_id
       },
       "email": {
         "S": g_email
       },
       "google_id": {
-        "S": g_ID
+        "S": g_id
       },
       "name": {
         "S": g_name
@@ -66,51 +189,221 @@ function addStudent(g_ID, g_name, g_email, g_photo, status) {
       "profile_picture": {
         "S": g_photo
       },
-      "initiative_data": {
-        "L": [
-          {
-            "M": {}
-          }
-        ]
-      },
-      "attendance": {
-        "L": [
-          {
-            "M": {}
-          }
-        ]
+      "department_name": {
+        "S": department_name
       },
       "tags": {
-        "L": status
+        "L": tags
+      },
+      "initiative_hours": {
+        "N": "0"
+      },
+      "initiative_data": {
+        "L": []
+      },
+      "attendance": {
+        "L": []
       }
     }
   }
 
-  ddb.send(new PutItemCommand(student_data));
+  ddb.send(new PutItemCommand(query));
 }
 
-async function getUserUUID(g_ID){
+async function loginUserDB(g_id) {
+  if (typeof g_id === "number") {
+    g_id = g_id.toString();
+  }
+
   let query = {
     "TableName": "team75_tracking_students",
     "ScanIndexForward": true,
     "IndexName": "SecureLogin",
-    "KeyConditionExpression": "#35f20 = :35f20",
+    "KeyConditionExpression": "google_id = :google_id",
     "ExpressionAttributeValues": {
-      ":35f20": {
-        "S": g_ID
+      ":google_id": {
+        "S": g_id
       }
-    },
-    "ExpressionAttributeNames": {
-      "#35f20": "google_id"
     }
   }
 
   let res = await ddb.send(new QueryCommand(query));
 
-  return res.Items[0].user_id.S;
+  return res.Items[0];
+}
+
+async function getUserOverviewDB(user_id) {
+  let query = {
+    "TableName": "team75_tracking_students",
+    "ConsistentRead": true,
+    "Key": {
+      "user_id": {
+        "S": user_id
+      }
+    },
+    "ProjectionExpression": "user_id,email,#name,profile_picture,department_name,initiative_hours,tags",
+    "ExpressionAttributeNames": {
+      "#name": "name"
+    }
+  }
+
+  let res = await ddb.send(new GetItemCommand(query));
+
+  return res.Item;
+}
+
+async function getUserInitiativeDataDB(user_id) {
+  let query = {
+    "TableName": "team75_tracking_students",
+    "ConsistentRead": true,
+    "Key": {
+      "user_id": {
+        "S": user_id
+      }
+    },
+    "ProjectionExpression": "initiative_hours,initiative_data"
+  }
+
+  let res = await ddb.send(new GetItemCommand(query));
+
+  return res.Item;
+}
+
+async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, duration, timestamp) {
+  // Check if initiative exists
+
+  if (typeof prep_time === "boolean") {
+    prep_time = prep_time.toString();
+  }
+
+  if (typeof duration === "number") {
+    duration = duration.toString();
+  }
+
+  if (typeof timestamp === "number") {
+    timestamp = timestamp.toString();
+  }
+
+  let query = {
+    "TableName": "team75_tracking_students",
+    "Key": {
+      "user_id": {
+        "S": user_id
+      }
+    },
+    "UpdateExpression": "SET initiative_data = list_append(:datapoint, initiative_data)",
+    "ExpressionAttributeValues": {
+      ":datapoint": {
+        "M": {
+          "initiative_id": {
+            "S": initiative_id
+          },
+          "prep_time": {
+            "BOOL": prep_time
+          },
+          "duration": {
+            "N": duration
+          },
+          "timestamp": {
+            "N": timestamp
+          }
+        }
+      }
+    }
+  }
+
+  ddb.send(new UpdateItemCommand(query));
+}
+
+/* ----- Initiatives ----- */
+
+async function addInitiative(initiative_name, categories, leads){
+  if (typeof leads === "string") {
+    leads = [leads]
+  }
+
+  // Check if leads exist
+
+  let initiative_id = leads[0] == "56d26180-ff2e-11ed-ac97-659b7a975caa" ? "0ecda500-ff53-11ed-8e9f-339a46b4c7b3" : uuid_v1();
+
+  if (typeof categories === "string") {
+    categories = [{ "S": categories }]
+  } else if (Array.isArray(categories)) {
+    categories = categories.map(el => { return { "S": el } })
+  }
+
+  let leadObj = {};
+  for (let lead of leads){
+    leadObj[lead] = { "L": [] };
+  }
+
+  let query = {
+    "TableName": "team75_tracking_initiatives",
+    "Item": {
+      "initiative_id": {
+        "S": initiative_id
+      },
+      "initiative_name": {
+        "S": initiative_name
+      },
+      "categories": {
+        "L": categories
+      },
+      "total_mins": {
+        "N": "0"
+      },
+      "total_participants": {
+        "N": Object.keys(leadObj).length.toString()
+      },
+      "participants": {
+        "M": {}
+      },
+      "leads": {
+        "M": leadObj
+      }
+    }
+  }
+
+  ddb.send(new PutItemCommand(query));
+}
+
+async function getInitiative(initiative_id){
+  let query = {
+    "TableName": "team75_tracking_initiatives",
+    "ConsistentRead": true,
+    "Key": {
+      "initiative_id": {
+        "S": initiative_id
+      }
+    },
+    "ProjectionExpression": "initiative_name,categories,total_mins,total_participants,leads"
+  }
+
+  let res = await ddb.send(new GetItemCommand(query));
+
+  return res.Item;
+}
+
+async function getAllInitiatives(){
+  let query = {
+    "TableName": "team75_tracking_initiatives",
+    "ConsistentRead": true,
+    "ProjectionExpression": "initiative_id,initiative_name,categories,total_mins,total_participants,leads"
+  }
+
+  let res = await ddb.send(new GetItemCommand(query));
+
+  return res.Items;
 }
 
 module.exports = {
-  addStudent,
-  getUserUUID
+  initDB,
+  addSessionDB,
+  findSessionDB,
+  cleanSessionsDB,
+  addUserDB,
+  loginUserDB,
+  getUserOverviewDB,
+  getUserInitiativeDataDB,
+  addInitiativeDataToUserDB
 }

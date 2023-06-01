@@ -1,4 +1,9 @@
 const { google } = require("googleapis");
+let origin;
+
+function setOrigin(requestOrigin) {
+  origin = requestOrigin;
+}
 
 const newClient = () => new google.auth.OAuth2(
   "672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com",
@@ -16,12 +21,12 @@ async function getTokens(code, oauth2Client) {
   return { tokens, client };
 }
 
-async function getClientID(tokens, oauth2Client) {
+async function getClientID(tokens, oauth2Client, g_id) {
   let client = oauth2Client || newClient();
   client.setCredentials(tokens);
 
   let response = await peopleAPI.people.get({
-    resourceName: "people/me",
+    resourceName: `people/${g_id || "me"}`,
     personFields: "names,emailAddresses,photos",
     auth: client
   });
@@ -34,4 +39,4 @@ async function getClientID(tokens, oauth2Client) {
   };
 }
 
-module.exports = { getTokens, getClientID }
+module.exports = { setOrigin, getTokens, getClientID }
