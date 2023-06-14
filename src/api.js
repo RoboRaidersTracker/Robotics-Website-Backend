@@ -4,7 +4,7 @@ const {
   addSessionDB,
   findSessionDB,
   cleanSessionsDB,
-  addUserDB,
+  batchAddUsersDB,
   loginUserDB,
   batchCleanUsersDB,
   batchDeleteUsersDB,
@@ -197,7 +197,7 @@ async function batchDeleteUsers(cookies, body) {
     }
   }
 
-  batchDeleteUsersDB(body.user_id || body.user_ids);
+  batchDeleteUsersDB(body.user_ids || body.user_id);
   return { statusCode: 200 }
 }
 

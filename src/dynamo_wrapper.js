@@ -27,8 +27,6 @@ const tables = {
 
 /* ----- Setup + Init Data ----- */
 
-initDB();
-
 async function initDB() {
   let res = await ddb.send(new ListTablesCommand({}))
 
@@ -49,7 +47,7 @@ async function initDB() {
 
 async function initSampleData() {
   try {
-    await addUserDB(
+    await batchAddUsersDB(
       "114409764148443206366",
       "Eshaan Debnath",
       "eshaandebnath@gmail.com",
@@ -154,60 +152,61 @@ async function cleanSessionsDB(expireMins, currTime) {
 
 /* ----- Users ----- */
 // Add functions
-async function addUserDB(g_id, g_name, g_email, g_photo, department_name, tags) {
-  if (await loginUserDB(g_id) != undefined) {
-    return;
+async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_names, tags_s){
+
+  if (typeof g_ids === "string" || typeof g_ids === "number") {
+    g_ids = [g_ids];
+    g_names = [g_names];
+    g_emails = [g_emails];
+    g_photos = [g_photos];
+    department_names = [department_names];
+    tags_s = [tags_s];
   }
 
-  let user_id = uuid_v1();
-
-  if (typeof g_id === "number") {
-    g_id = g_id.toString();
+  let len = g_ids.length;
+  if (
+    g_names.length != len
+    || g_emails.length != len
+    || g_photos.length != len
+    || department_names.length != len
+    || tags_s.length != len
+  ){
+    return false;
   }
 
-  if (typeof tags === "string") {
-    tags = [{ "S": tags }]
-  } else if (Array.isArray(tags)) {
-    tags = tags.map(el => { return { "S": el } })
-  }
-
-  let query = {
-    "TableName": "team75_tracking_students",
-    "Item": {
-      "user_id": {
-        "S": g_id == "114409764148443206366" ? "56d26180-ff2e-11ed-ac97-659b7a975caa" : user_id
-      },
-      "email": {
-        "S": g_email
-      },
-      "google_id": {
-        "S": g_id
-      },
-      "name": {
-        "S": g_name
-      },
-      "profile_picture": {
-        "S": g_photo
-      },
-      "department_name": {
-        "S": department_name
-      },
-      "tags": {
-        "L": tags
-      },
-      "initiative_hours": {
-        "N": "0"
-      },
-      "initiative_data": {
-        "L": []
-      },
-      "attendance": {
-        "L": []
-      }
+  let putItems = [];
+  for (let i = 0; i < len; i++){
+    if (typeof tags_s[i] == "string") {
+      tags_s[i] = [tags_s[i]];
     }
-  }
 
-  ddb.send(new PutItemCommand(query));
+    tags_s[i].map(el => { return { "S": el } })
+
+    putItems.push({
+      PutRequest: {
+        Item: {
+          // FIX
+          "user_id": { "S": "114409764148443206366" ? "56d26180-ff2e-11ed-ac97-659b7a975caa" : user_id },
+          "google_id": { "S": g_ids[i] },
+          "name": { "S": g_names[i] },
+          "department_name": { "S": department_names[i] },
+          "profile_picture": { "S": g_photos[i] },
+          "initiative_hours": { "N": "0" },
+          "initiative_data": { "L": [] },
+          "attendance": { "L": [] },
+          "tags": { "L": tags_s[i] },
+          "email": { "S": g_emails[i] }
+        }
+      }
+    })
+  }
+ 
+  for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
+    let slice = putItems.slice(i * 25, i * 25 + 25);
+    query = { RequestItems: {} };
+    query["RequestItems"]["team75_tracking_students"] = slice;
+    await ddb.send(new BatchWriteItemCommand(query));
+  }
 }
 
 // Get functions
@@ -271,8 +270,20 @@ async function getUserInitiativeDataDB(user_id) {
 }
 
 // Update functions
-async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, duration, timestamp) {
+async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, duration, timestamp, lead) {
   // Check if initiative exists
+
+  if (typeof lead === "string") {
+    lead = lead.toLowerCase() === "true";
+  }
+
+  if (typeof prep_time === "string") {
+    prep_time = prep_time.toLowerCase() === "true";
+  }
+
+  if (!lead && prep_time){
+    return false;
+  }
 
   if (typeof prep_time === "boolean") {
     prep_time = prep_time.toString();
@@ -315,10 +326,45 @@ async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, dura
   }
 
   ddb.send(new UpdateItemCommand(query));
+
+  att = lead ? "lead_logs" : "participant_logs";
+
+  // https://stackoverflow.com/questions/47472603
+  // https://stackoverflow.com/questions/47415522
+  query = {
+    "TableName": "team75_tracking_initiatives",
+    "Key": {
+      "initiative_id": {
+        "S": initiative_id
+      }
+    },
+    "UpdateExpression": `SET ${att}.${user_id} = list_append(:datapoint, if_not_exists(${att}.${user_id}, :empty)),
+    total_mins = total_mins + :mins_change`,
+    "ExpressionAttributeValues": {
+      ":datapoint": {
+        "M": {
+          "duration": {
+            "N": duration
+          },
+          "timestamp": {
+            "N": timestamp
+          }
+        }
+      },
+      ":mins_change": duration,
+      ":empty": { "L": [] }
+    }
+  }
+
+  if (lead){
+    query.ExpressionAttributeValues[":datapoint"].M.prep_time = { "BOOL": prep_time }
+  }
+
+  ddb.send(new UpdateItemCommand(query));
 }
 
 async function updateUserDB(user_id, data){
-  // Write later
+  // For @shravan
 }
 
 // Delete functions
@@ -414,11 +460,14 @@ async function addInitiative(initiative_name, categories, leads) {
       "total_participants": {
         "N": Object.keys(leadObj).length.toString()
       },
-      "participants": {
+      "participant_logs": {
         "M": {}
       },
-      "leads": {
+      "lead_logs": {
         "M": leadObj
+      },
+      "leads": {
+        "L": leads.map(el => { return { "S": el } })
       }
     }
   }
@@ -455,12 +504,16 @@ async function getAllInitiatives() {
   return res.Items;
 }
 
+async function updateInitiativeDB(user_id, data){
+  // For @shravan
+}
+
 module.exports = {
   initDB,
   addSessionDB,
   findSessionDB,
   cleanSessionsDB,
-  addUserDB,
+  batchAddUsersDB,
   loginUserDB,
   batchCleanUsersDB,
   batchDeleteUsersDB,
