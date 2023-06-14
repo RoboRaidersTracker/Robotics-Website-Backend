@@ -21,7 +21,7 @@
         "KeyType": "RANGE"
       }
     ],
-    "BillingMode": "PROVISIONED",
+    "BillingMode": "PAY_PER_REQUEST",
     "ProvisionedThroughput": {
       "ReadCapacityUnits": 1,
       "WriteCapacityUnits": 1
@@ -74,7 +74,7 @@
         }
       }
     ],
-    "BillingMode": "PROVISIONED",
+    "BillingMode": "PAY_PER_REQUEST",
     "ProvisionedThroughput": {
       "ReadCapacityUnits": 10,
       "WriteCapacityUnits": 10
@@ -101,7 +101,7 @@
         "AttributeType": "S"
       }
     ],
-    "BillingMode": "PROVISIONED",
+    "BillingMode": "PAY_PER_REQUEST",
     "ProvisionedThroughput": {
       "ReadCapacityUnits": 5,
       "WriteCapacityUnits": 5
@@ -122,11 +122,7 @@
         "AttributeType": "S"
       }
     ],
-    "BillingMode": "PROVISIONED",
-    "ProvisionedThroughput": {
-      "ReadCapacityUnits": 1,
-      "WriteCapacityUnits": 1
-    },
+    "BillingMode": "PAY_PER_REQUEST",
     "TableClass": "STANDARD_INFREQUENT_ACCESS"
   }
 }

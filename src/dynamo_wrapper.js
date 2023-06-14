@@ -13,7 +13,7 @@ const uuid_v1 = require("uuid").v1;
 
 let ddb;
 try {
-  ddb = new DynamoDB(require("./local.json"))
+  ddb = new DynamoDB(require("./local.json"));
 } catch (error) {
   ddb = new DynamoDB({ region: "us-east-1" });
 }
@@ -180,13 +180,17 @@ async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_na
       tags_s[i] = [tags_s[i]];
     }
 
-    tags_s[i].map(el => { return { "S": el } })
+    tags_s[i] = tags_s[i].map(el => { return { "S": el } })
+
+    if (await loginUserDB(g_ids[i]) !== undefined){
+      return;
+    }
 
     putItems.push({
       PutRequest: {
         Item: {
           // FIX
-          "user_id": { "S": "114409764148443206366" ? "56d26180-ff2e-11ed-ac97-659b7a975caa" : user_id },
+          "user_id": { "S": g_ids[i] == "114409764148443206366" ? "56d26180-ff2e-11ed-ac97-659b7a975caa" : user_id },
           "google_id": { "S": g_ids[i] },
           "name": { "S": g_names[i] },
           "department_name": { "S": department_names[i] },
@@ -205,7 +209,7 @@ async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_na
     let slice = putItems.slice(i * 25, i * 25 + 25);
     query = { RequestItems: {} };
     query["RequestItems"]["team75_tracking_students"] = slice;
-    await ddb.send(new BatchWriteItemCommand(query));
+    res = await ddb.send(new BatchWriteItemCommand(query));
   }
 }
 
