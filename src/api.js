@@ -6,13 +6,22 @@ const {
   cleanSessionsDB,
   batchAddUsersDB,
   loginUserDB,
-  batchCleanUsersDB,
-  batchDeleteUsersDB,
   getUserOverviewDB,
   getUserInitiativeDataDB,
-  addInitiativeDataToUserDB
+  batchGetNamesDB, // Getting users on initiative's page
+  addInitiativeDataToUserDB,
+  updateUserDB, // In progress, @shravan
+  batchCleanUsersDB,
+  batchDeleteUsersDB,
+  addInitiativeDB,
+  getInitiativeLeadsDB,
+  getInitiativeDB,
+  getAllInitiativesDB,
+  batchGetInitiativeNamesDB, // Getting initiatives on user's page
+  updateInitiativeDB, // In progress, @shravan
+  batchDeleteInitiativesDB
 } = require("./dynamo_wrapper");
-const { setOrigin, getTokens, getClientID } = require("./google_oauth");
+const { setOrigin, getTokens, getClientID, getAllClientIDs } = require("./google_oauth");
 const newSession = () => require("randomstring").generate({
   length: 20,
   charset: "alphanumeric"
@@ -22,7 +31,7 @@ const newSession = () => require("randomstring").generate({
 const pageCode = readFileSync("./src/page.html", "utf-8");
 
 // Predefined constants
-const maxInitiativeLogDuration = 60*10;
+const maxInitiativeLogDuration = 60 * 10;
 
 // Session management
 let user_cache = [];
@@ -30,12 +39,12 @@ const expireMins = 60;
 const databaseCleanRateMins = 60 * 24 * 3;
 let lastDatabaseClean = timestamp();
 
-async function forceInit() {
-  initDB();
-}
-
 function timestamp() {
   return Math.floor((new Date() - new Date("Jan 1 2020 00:00:00 GMT")) / 1000 / 60);
+}
+
+async function forceInit() {
+  initDB();
 }
 
 async function cleanCacheAndDatabase() {
@@ -181,6 +190,66 @@ async function getUserOverview(cookies, body) {
   }
 }
 
+async function batchAddStudents(cookies, origin, body) {
+  try {
+    // Check user + update local cache
+    if ((await checkLogin(cookies)).statusCode != 200) {
+      return {
+        statusCode: 400
+      }
+    }
+
+    // Check if user has access
+    let user = user_cache.find(el => el.session_token == cookies["session-token"]);
+    if (!user.tags.includes("mentor")) {
+      return {
+        statusCode: 403
+      }
+    }
+
+    setOrigin(origin);
+    const { code } = body;
+    const { tokens, oauth2Client } = await getTokens(code);
+    const g_data = await getAllClientIDs(tokens, oauth2Client, body.searches || [body.search]);
+
+    let g_ids = g_data.map(el => el.id),
+      g_names = g_data.map(el => el.name),
+      g_emails = g_data.map(el => el.email),
+      g_photos = g_data.map(el => el.photo),
+      department_names = body.department || body.departments,
+      tags_s = body.tags || body.tags_s;
+
+    if (typeof department_names === "string") {
+      department_names = new Array(g_data.length).fill(department_names);
+    }
+
+    if (department_names.length != g_data.length) {
+      throw new Error("Department name list and user list are different sizes.");
+    }
+
+    if (typeof tags_s === "string") {
+      tags_s = new Array(g_data.length).fill([tags_s]);
+    }
+
+    if (tags_s.length != g_data.length) {
+      throw new Error("Tag list and user list are different sizes.");
+    }
+
+    batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_names, tags_s);
+
+    return {
+      statusCode: 200,
+      body: response
+    }
+  } catch (error) {
+    console.log(error)
+    return {
+      statusCode: 401,
+      body: { message: "Unauthorized.", details: error }
+    }
+  }
+}
+
 async function batchDeleteUsers(cookies, body) {
   // Check user + update local cache
   if ((await checkLogin(cookies)).statusCode != 200) {
@@ -217,7 +286,7 @@ async function batchCleanUsers(cookies, body) {
     }
   }
 
-  batchCleanUsersDB(body.user_id || body.user_ids);
+  batchCleanUsersDB(body.user_ids || body.user_id);
   return { statusCode: 200 }
 }
 
@@ -271,12 +340,13 @@ async function addInitiativeDataToUser(cookies, body) {
     }
   }
 
-  if (duration > maxInitiativeLogDuration){
+  if (duration > maxInitiativeLogDuration) {
     return {
       statusCode: 400
     }
   }
 
+  // FIX
   // Check initiative exists
   // Check that user can log prep time
   if (prep_time);

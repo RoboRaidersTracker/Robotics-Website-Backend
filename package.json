@@ -1,9 +1,11 @@
 {
-    "name": "lambda-from-scratch",
-    "description": "Start from scratch starter project",
+    "name": "robotics-website-backend",
+    "description": "Backend for Team 75's Software Development Project",
     "version": "0.0.1",
     "private": true,
-    "scripts": {},
+    "scripts": {
+        "start:db": "java -D\"java.library.path=./DynamoDBLocal/DynamoDBLocal_lib\" -jar ./DynamoDBLocal/DynamoDBLocal.jar"
+    },
     "dependencies": {
         "@aws-sdk/client-dynamodb": "^3.338.0",
         "googleapis": "^118.0.0",

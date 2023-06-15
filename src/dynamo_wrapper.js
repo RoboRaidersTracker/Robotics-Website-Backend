@@ -7,7 +7,8 @@ const {
   BatchWriteItemCommand,
   ScanCommand,
   GetItemCommand,
-  UpdateItemCommand
+  UpdateItemCommand,
+  BatchGetItemCommand
 } = require("@aws-sdk/client-dynamodb");
 const uuid_v1 = require("uuid").v1;
 
@@ -152,7 +153,7 @@ async function cleanSessionsDB(expireMins, currTime) {
 
 /* ----- Users ----- */
 // Add functions
-async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_names, tags_s){
+async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_names, tags_s) {
 
   if (typeof g_ids === "string" || typeof g_ids === "number") {
     g_ids = [g_ids];
@@ -170,21 +171,24 @@ async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_na
     || g_photos.length != len
     || department_names.length != len
     || tags_s.length != len
-  ){
+  ) {
     return false;
   }
 
   let putItems = [];
-  for (let i = 0; i < len; i++){
+  for (let i = 0; i < len; i++) {
     if (typeof tags_s[i] == "string") {
       tags_s[i] = [tags_s[i]];
     }
 
     tags_s[i] = tags_s[i].map(el => { return { "S": el } })
 
-    if (await loginUserDB(g_ids[i]) !== undefined){
-      return;
+    if (await loginUserDB(g_ids[i]) !== undefined) {
+      // FIX - update instead?
+      continue;
     }
+
+    let user_id = uuid_v1();
 
     putItems.push({
       PutRequest: {
@@ -204,7 +208,7 @@ async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_na
       }
     })
   }
- 
+
   for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
     let slice = putItems.slice(i * 25, i * 25 + 25);
     query = { RequestItems: {} };
@@ -273,6 +277,35 @@ async function getUserInitiativeDataDB(user_id) {
   return res.Item;
 }
 
+async function batchGetNamesDB(user_ids) {
+  if (typeof user_ids === "string") {
+    user_ids = [user_ids];
+  }
+
+  let keyItems = [];
+
+  user_ids.forEach(user_id => {
+    keyItems.push({ "user_id": { "S": user_id } })
+  })
+
+  let res = [];
+  for (let i = 0; i < Math.ceil(keyItems.length / 25); i++) {
+    let slice = keyItems.slice(i * 25, i * 25 + 25);
+    query = {
+      RequestItems: {
+        team75_tracking_students: {
+          Keys: slice,
+          AttributesToGet: [
+            "name"
+          ]
+        }
+      }
+    };
+    res = [...res, ...(await ddb.send(new BatchGetItemCommand(query)))];
+  }
+  return res;
+}
+
 // Update functions
 async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, duration, timestamp, lead) {
   // Check if initiative exists
@@ -285,7 +318,7 @@ async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, dura
     prep_time = prep_time.toLowerCase() === "true";
   }
 
-  if (!lead && prep_time){
+  if (!lead && prep_time) {
     return false;
   }
 
@@ -360,14 +393,14 @@ async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, dura
     }
   }
 
-  if (lead){
+  if (lead) {
     query.ExpressionAttributeValues[":datapoint"].M.prep_time = { "BOOL": prep_time }
   }
 
   ddb.send(new UpdateItemCommand(query));
 }
 
-async function updateUserDB(user_id, data){
+async function updateUserDB(user_id, data) {
   // For @shravan
 }
 
@@ -425,8 +458,8 @@ async function batchDeleteUsersDB(user_ids) {
 }
 
 /* ----- Initiatives ----- */
-
-async function addInitiative(initiative_name, categories, leads) {
+// Get functions
+async function addInitiativeDB(initiative_name, categories, leads) {
   if (typeof leads === "string") {
     leads = [leads]
   }
@@ -479,7 +512,24 @@ async function addInitiative(initiative_name, categories, leads) {
   ddb.send(new PutItemCommand(query));
 }
 
-async function getInitiative(initiative_id) {
+async function getInitiativeLeadsDB(initiative_id) {
+  let query = {
+    "TableName": "team75_tracking_initiatives",
+    "ConsistentRead": true,
+    "Key": {
+      "initiative_id": {
+        "S": initiative_id
+      }
+    },
+    "ProjectionExpression": "leads"
+  }
+
+  let res = await ddb.send(new GetItemCommand(query));
+
+  return res.Item.L.map(el => el.S);
+}
+
+async function getInitiativeDB(initiative_id) {
   let query = {
     "TableName": "team75_tracking_initiatives",
     "ConsistentRead": true,
@@ -496,7 +546,7 @@ async function getInitiative(initiative_id) {
   return res.Item;
 }
 
-async function getAllInitiatives() {
+async function getAllInitiativesDB() {
   let query = {
     "TableName": "team75_tracking_initiatives",
     "ConsistentRead": true,
@@ -508,8 +558,64 @@ async function getAllInitiatives() {
   return res.Items;
 }
 
-async function updateInitiativeDB(user_id, data){
+async function batchGetInitiativeNamesDB(initiative_ids) {
+  if (typeof initiative_ids === "string") {
+    initiative_ids = [initiative_ids];
+  }
+
+  let keyItems = [];
+
+  initiative_ids.forEach(initiative_id => {
+    keyItems.push({ "initiative_id": { "S": initiative_id } })
+  })
+
+  let res = [];
+  for (let i = 0; i < Math.ceil(keyItems.length / 25); i++) {
+    let slice = keyItems.slice(i * 25, i * 25 + 25);
+    query = {
+      RequestItems: {
+        team75_tracking_initiatives: {
+          Keys: slice,
+          AttributesToGet: [
+            "initiative_name"
+          ]
+        }
+      }
+    };
+    res = [...res, ...(await ddb.send(new BatchGetItemCommand(query)))];
+  }
+  return res;
+}
+
+// Update functions
+async function updateInitiativeDB(user_id, data) {
   // For @shravan
+}
+
+// Delete functions
+async function batchDeleteInitiativesDB(initiative_ids) {
+  if (typeof initiative_ids === "string") {
+    initiative_ids = [initiative_ids];
+  }
+
+  let delItems = [];
+
+  initiative_ids.forEach(initiative_id => {
+    delItems.push({
+      DeleteRequest: {
+        Key: {
+          "initiative_id": { "S": initiative_id }
+        }
+      }
+    })
+  })
+
+  for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
+    let slice = delItems.slice(i * 25, i * 25 + 25);
+    query = { RequestItems: {} };
+    query["RequestItems"]["team75_tracking_initiatives"] = slice;
+    await ddb.send(new BatchWriteItemCommand(query));
+  }
 }
 
 module.exports = {
@@ -519,9 +625,18 @@ module.exports = {
   cleanSessionsDB,
   batchAddUsersDB,
   loginUserDB,
-  batchCleanUsersDB,
-  batchDeleteUsersDB,
   getUserOverviewDB,
   getUserInitiativeDataDB,
-  addInitiativeDataToUserDB
+  batchGetNamesDB,
+  addInitiativeDataToUserDB,
+  updateUserDB,
+  batchCleanUsersDB,
+  batchDeleteUsersDB,
+  addInitiativeDB,
+  getInitiativeLeadsDB,
+  getInitiativeDB,
+  getAllInitiativesDB,
+  batchGetInitiativeNamesDB,
+  updateInitiativeDB,
+  batchDeleteInitiativesDB
 }
