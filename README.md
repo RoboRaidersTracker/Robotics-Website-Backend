@@ -1,15 +1,25 @@
+# Setting up `src/local.json`
+Example setup:
+```json
+{
+  "aws_access_key_id": "85z0k6",
+  "aws_secret_access_key": "78mz0f",
+  "region": "localhost",
+  "endpoint": "http://localhost:8000"
+}
+```
+Make sure to set credentials to access in accordance with NoSQL Workbench.
+
 # Run Code
 ```bash
+# Terminal 1 - start DynamoDB local server
+npm run start:db
+# Terminal 2
 node route.js
 ```
 
 # Working with DynamoDB
-## Run Locally
-```bash
-java -D"java.library.path=./DynamoDBLocal/DynamoDBLocal_lib" -jar ./DynamoDBLocal/DynamoDBLocal.jar
-```
-
-Make sure to set credentials to access in accordance with NoSQL Workbench.
+Mainly use NoSQL Workbench + NodeJS
 
 ## Access Through Terminal
 ```bash
