@@ -23,22 +23,20 @@ const tables = {
   sessions: "team75_tracking_sessions",
   students: "team75_tracking_students",
   initiatives: "team75_tracking_initiatives",
-  departments: "team75_tracking_departments"
-}
+  departments: "team75_tracking_departments",
+};
 
 /* ----- Setup + Init Data ----- */
 
 async function initDB() {
-  let res = await ddb.send(new ListTablesCommand({}))
+  let res = await ddb.send(new ListTablesCommand({}));
 
   // Create tables if they don't exist
   const schemas = require("./data_structure.json");
   const currTables = res.TableNames;
   for (const table of Object.entries(tables)) {
     if (!currTables.includes(table[1])) {
-      await ddb.send(
-        new CreateTableCommand(schemas[table[0]])
-      );
+      await ddb.send(new CreateTableCommand(schemas[table[0]]));
     }
   }
 
@@ -55,66 +53,74 @@ async function initSampleData() {
       "https://lh3.googleusercontent.com/a/AAcHTtfsmybpx59Z8dwUWN1saEu0Cm8Pwsl_h_PKns9e5w=s100",
       "Programming",
       "mentor"
-    )
-  } catch { }
+    );
+  } catch {}
   try {
     await addInitiative(
       "Initiative Name",
       ["STEM", "Internal"],
       "56d26180-ff2e-11ed-ac97-659b7a975caa"
-    )
-  } catch { }
+    );
+  } catch {}
 }
 
 /* ----- Session Management ----- */
 
-async function addSessionDB(session_token, timestamp, user_id, department_name, tags) {
+async function addSessionDB(
+  session_token,
+  timestamp,
+  user_id,
+  department_name,
+  tags
+) {
   if (typeof timestamp === "number") {
     timestamp = timestamp.toString();
   }
 
   if (typeof tags === "string") {
-    tags = [{ "S": tags }]
+    tags = [{ S: tags }];
   } else if (Array.isArray(tags)) {
-    tags = tags.map(el => { return { "S": el } })
+    tags = tags.map((el) => {
+      return { S: el };
+    });
   }
 
   let query = {
-    "TableName": "team75_tracking_sessions",
-    "Item": {
-      "session_token": {
-        "S": session_token
+    TableName: "team75_tracking_sessions",
+    Item: {
+      session_token: {
+        S: session_token,
       },
-      "timestamp": {
-        "N": timestamp
+      timestamp: {
+        N: timestamp,
       },
-      "user_id": {
-        "S": user_id
+      user_id: {
+        S: user_id,
       },
-      "department_name": {
-        "S": department_name
+      department_name: {
+        S: department_name,
       },
-      "tags": {
-        "L": tags
-      }
-    }
-  }
+      tags: {
+        L: tags,
+      },
+    },
+  };
 
   ddb.send(new PutItemCommand(query));
 }
 
 async function findSessionDB(session_token) {
   let query = {
-    "TableName": "team75_tracking_sessions",
-    "ScanIndexForward": true,
-    "ConsistentRead": true,
-    "KeyConditionExpression": "session_token = :session_token",
-    "ExpressionAttributeValues": {
+    TableName: "team75_tracking_sessions",
+    ScanIndexForward: true,
+    ConsistentRead: true,
+    KeyConditionExpression: "session_token = :session_token",
+    ExpressionAttributeValues: {
       ":session_token": {
-        "S": session_token
-      }
-    }
-  }
+        S: session_token,
+      },
+    },
+  };
 
   let res = await ddb.send(new QueryCommand(query));
 
@@ -123,25 +129,26 @@ async function findSessionDB(session_token) {
 
 async function cleanSessionsDB(expireMins, currTime) {
   let query = {
-    "TableName": "team75_tracking_sessions",
-    "ConsistentRead": true,
-    "ProjectionExpression": "timestamp,session_token"
-  }
+    TableName: "team75_tracking_sessions",
+    ConsistentRead: true,
+    ProjectionExpression: "timestamp,session_token",
+  };
 
-  let res = await ddb.send(new ScanCommand(query)), delItems = [];
+  let res = await ddb.send(new ScanCommand(query)),
+    delItems = [];
 
-  res.Items.forEach(session => {
+  res.Items.forEach((session) => {
     if (parseInt(session.timestamp.N) + expireMins < currTime) {
       delItems.push({
         DeleteRequest: {
           Key: {
-            "session_token": session.session_token,
-            "timestamp": session.timestamp
-          }
-        }
-      })
+            session_token: session.session_token,
+            timestamp: session.timestamp,
+          },
+        },
+      });
     }
-  })
+  });
 
   for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
     let slice = delItems.slice(i * 25, i * 25 + 25);
@@ -153,8 +160,14 @@ async function cleanSessionsDB(expireMins, currTime) {
 
 /* ----- Users ----- */
 // Add functions
-async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_names, tags_s) {
-
+async function batchAddUsersDB(
+  g_ids,
+  g_names,
+  g_emails,
+  g_photos,
+  department_names,
+  tags_s
+) {
   if (typeof g_ids === "string" || typeof g_ids === "number") {
     g_ids = [g_ids];
     g_names = [g_names];
@@ -166,11 +179,11 @@ async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_na
 
   let len = g_ids.length;
   if (
-    g_names.length != len
-    || g_emails.length != len
-    || g_photos.length != len
-    || department_names.length != len
-    || tags_s.length != len
+    g_names.length != len ||
+    g_emails.length != len ||
+    g_photos.length != len ||
+    department_names.length != len ||
+    tags_s.length != len
   ) {
     return false;
   }
@@ -181,7 +194,9 @@ async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_na
       tags_s[i] = [tags_s[i]];
     }
 
-    tags_s[i] = tags_s[i].map(el => { return { "S": el } })
+    tags_s[i] = tags_s[i].map((el) => {
+      return { S: el };
+    });
 
     if (await loginUserDB(g_ids[i]) !== undefined) {
       // FIX - update instead?
@@ -194,19 +209,24 @@ async function batchAddUsersDB(g_ids, g_names, g_emails, g_photos, department_na
       PutRequest: {
         Item: {
           // FIX
-          "user_id": { "S": g_ids[i] == "114409764148443206366" ? "56d26180-ff2e-11ed-ac97-659b7a975caa" : user_id },
-          "google_id": { "S": g_ids[i] },
-          "name": { "S": g_names[i] },
-          "department_name": { "S": department_names[i] },
-          "profile_picture": { "S": g_photos[i] },
-          "initiative_hours": { "N": "0" },
-          "initiative_data": { "L": [] },
-          "attendance": { "L": [] },
-          "tags": { "L": tags_s[i] },
-          "email": { "S": g_emails[i] }
-        }
-      }
-    })
+          user_id: {
+            S:
+              g_ids[i] == "114409764148443206366"
+                ? "56d26180-ff2e-11ed-ac97-659b7a975caa"
+                : user_id,
+          },
+          google_id: { S: g_ids[i] },
+          name: { S: g_names[i] },
+          department_name: { S: department_names[i] },
+          profile_picture: { S: g_photos[i] },
+          initiative_hours: { N: "0" },
+          initiative_data: { L: [] },
+          attendance: { L: [] },
+          tags: { L: tags_s[i] },
+          email: { S: g_emails[i] },
+        },
+      },
+    });
   }
 
   for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
@@ -224,16 +244,16 @@ async function loginUserDB(g_id) {
   }
 
   let query = {
-    "TableName": "team75_tracking_students",
-    "ScanIndexForward": true,
-    "IndexName": "SecureLogin",
-    "KeyConditionExpression": "google_id = :google_id",
-    "ExpressionAttributeValues": {
+    TableName: "team75_tracking_students",
+    ScanIndexForward: true,
+    IndexName: "SecureLogin",
+    KeyConditionExpression: "google_id = :google_id",
+    ExpressionAttributeValues: {
       ":google_id": {
-        "S": g_id
-      }
-    }
-  }
+        S: g_id,
+      },
+    },
+  };
 
   let res = await ddb.send(new QueryCommand(query));
 
@@ -242,18 +262,19 @@ async function loginUserDB(g_id) {
 
 async function getUserOverviewDB(user_id) {
   let query = {
-    "TableName": "team75_tracking_students",
-    "ConsistentRead": true,
-    "Key": {
-      "user_id": {
-        "S": user_id
-      }
+    TableName: "team75_tracking_students",
+    ConsistentRead: true,
+    Key: {
+      user_id: {
+        S: user_id,
+      },
     },
-    "ProjectionExpression": "user_id,email,#name,profile_picture,department_name,initiative_hours,tags",
-    "ExpressionAttributeNames": {
-      "#name": "name"
-    }
-  }
+    ProjectionExpression:
+      "user_id,email,#name,profile_picture,department_name,initiative_hours,tags",
+    ExpressionAttributeNames: {
+      "#name": "name",
+    },
+  };
 
   let res = await ddb.send(new GetItemCommand(query));
 
@@ -262,15 +283,15 @@ async function getUserOverviewDB(user_id) {
 
 async function getUserInitiativeDataDB(user_id) {
   let query = {
-    "TableName": "team75_tracking_students",
-    "ConsistentRead": true,
-    "Key": {
-      "user_id": {
-        "S": user_id
-      }
+    TableName: "team75_tracking_students",
+    ConsistentRead: true,
+    Key: {
+      user_id: {
+        S: user_id,
+      },
     },
-    "ProjectionExpression": "initiative_hours,initiative_data"
-  }
+    ProjectionExpression: "initiative_hours,initiative_data",
+  };
 
   let res = await ddb.send(new GetItemCommand(query));
 
@@ -307,7 +328,14 @@ async function batchGetNamesDB(user_ids) {
 }
 
 // Update functions
-async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, duration, timestamp, lead) {
+async function addInitiativeDataToUserDB(
+  user_id,
+  initiative_id,
+  prep_time,
+  duration,
+  timestamp,
+  lead
+) {
   // Check if initiative exists
 
   if (typeof lead === "string") {
@@ -335,32 +363,33 @@ async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, dura
   }
 
   let query = {
-    "TableName": "team75_tracking_students",
-    "Key": {
-      "user_id": {
-        "S": user_id
-      }
+    TableName: "team75_tracking_students",
+    Key: {
+      user_id: {
+        S: user_id,
+      },
     },
-    "UpdateExpression": "SET initiative_data = list_append(:datapoint, initiative_data)",
-    "ExpressionAttributeValues": {
+    UpdateExpression:
+      "SET initiative_data = list_append(:datapoint, initiative_data)",
+    ExpressionAttributeValues: {
       ":datapoint": {
-        "M": {
-          "initiative_id": {
-            "S": initiative_id
+        M: {
+          initiative_id: {
+            S: initiative_id,
           },
-          "prep_time": {
-            "BOOL": prep_time
+          prep_time: {
+            BOOL: prep_time,
           },
-          "duration": {
-            "N": duration
+          duration: {
+            N: duration,
           },
-          "timestamp": {
-            "N": timestamp
-          }
-        }
-      }
-    }
-  }
+          timestamp: {
+            N: timestamp,
+          },
+        },
+      },
+    },
+  };
 
   ddb.send(new UpdateItemCommand(query));
 
@@ -369,39 +398,61 @@ async function addInitiativeDataToUserDB(user_id, initiative_id, prep_time, dura
   // https://stackoverflow.com/questions/47472603
   // https://stackoverflow.com/questions/47415522
   query = {
-    "TableName": "team75_tracking_initiatives",
-    "Key": {
-      "initiative_id": {
-        "S": initiative_id
-      }
+    TableName: "team75_tracking_initiatives",
+    Key: {
+      initiative_id: {
+        S: initiative_id,
+      },
     },
-    "UpdateExpression": `SET ${att}.${user_id} = list_append(:datapoint, if_not_exists(${att}.${user_id}, :empty)),
+    UpdateExpression: `SET ${att}.${user_id} = list_append(:datapoint, if_not_exists(${att}.${user_id}, :empty)),
     total_mins = total_mins + :mins_change`,
-    "ExpressionAttributeValues": {
+    ExpressionAttributeValues: {
       ":datapoint": {
-        "M": {
-          "duration": {
-            "N": duration
+        M: {
+          duration: {
+            N: duration,
           },
-          "timestamp": {
-            "N": timestamp
-          }
-        }
+          timestamp: {
+            N: timestamp,
+          },
+        },
       },
       ":mins_change": duration,
-      ":empty": { "L": [] }
-    }
-  }
+      ":empty": { L: [] },
+    },
+  };
 
   if (lead) {
-    query.ExpressionAttributeValues[":datapoint"].M.prep_time = { "BOOL": prep_time }
+    query.ExpressionAttributeValues[":datapoint"].M.prep_time = {
+      BOOL: prep_time,
+    };
   }
 
   ddb.send(new UpdateItemCommand(query));
 }
 
 async function updateUserDB(user_id, data) {
-  // For @shravan
+  var query = {
+    TableName: "team75_tracking_students",
+    Key: {
+      user_id: { S: user_id },
+    },
+    UpdateExpression: "SET",
+    ExpressionAttributeValues: {},
+    ExpressionAttributeNames: {},
+  };
+
+  // Update expression attribute values
+  Object.entries(data).forEach(([key, value]) => {
+    query.UpdateExpression += ` #${key} = :${key},`;
+    query.ExpressionAttributeValues[`:${key}`] = { S: value };
+    query.ExpressionAttributeNames[`#${key}`] = key;
+  });
+
+  // Remove trailing comma
+  query.UpdateExpression = query.UpdateExpression.slice(0, -1);
+
+  await ddb.send(new UpdateItemCommand(query));
 }
 
 // Delete functions
@@ -412,17 +463,17 @@ async function batchCleanUsersDB(user_ids) {
 
   let putItems = [];
 
-  user_ids.forEach(user_id => {
+  user_ids.forEach((user_id) => {
     putItems.push({
       PutRequest: {
         Item: {
-          "user_id": { "S": user_id },
-          "initiative_data": { "L": [] },
-          "attendance": { "L": [] }
-        }
-      }
-    })
-  })
+          user_id: { S: user_id },
+          initiative_data: { L: [] },
+          attendance: { L: [] },
+        },
+      },
+    });
+  });
 
   for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
     let slice = putItems.slice(i * 25, i * 25 + 25);
@@ -439,15 +490,15 @@ async function batchDeleteUsersDB(user_ids) {
 
   let delItems = [];
 
-  user_ids.forEach(user_id => {
+  user_ids.forEach((user_id) => {
     delItems.push({
       DeleteRequest: {
         Key: {
-          "user_id": { "S": user_id }
-        }
-      }
-    })
-  })
+          user_id: { S: user_id },
+        },
+      },
+    });
+  });
 
   for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
     let slice = delItems.slice(i * 25, i * 25 + 25);
@@ -461,65 +512,72 @@ async function batchDeleteUsersDB(user_ids) {
 // Get functions
 async function addInitiativeDB(initiative_name, categories, leads) {
   if (typeof leads === "string") {
-    leads = [leads]
+    leads = [leads];
   }
 
   // Check if leads exist
 
-  let initiative_id = leads[0] == "56d26180-ff2e-11ed-ac97-659b7a975caa" ? "0ecda500-ff53-11ed-8e9f-339a46b4c7b3" : uuid_v1();
+  let initiative_id =
+    leads[0] == "56d26180-ff2e-11ed-ac97-659b7a975caa"
+      ? "0ecda500-ff53-11ed-8e9f-339a46b4c7b3"
+      : uuid_v1();
 
   if (typeof categories === "string") {
-    categories = [{ "S": categories }]
+    categories = [{ S: categories }];
   } else if (Array.isArray(categories)) {
-    categories = categories.map(el => { return { "S": el } })
+    categories = categories.map((el) => {
+      return { S: el };
+    });
   }
 
   let leadObj = {};
   for (let lead of leads) {
-    leadObj[lead] = { "L": [] };
+    leadObj[lead] = { L: [] };
   }
 
   let query = {
-    "TableName": "team75_tracking_initiatives",
-    "Item": {
-      "initiative_id": {
-        "S": initiative_id
+    TableName: "team75_tracking_initiatives",
+    Item: {
+      initiative_id: {
+        S: initiative_id,
       },
-      "initiative_name": {
-        "S": initiative_name
+      initiative_name: {
+        S: initiative_name,
       },
-      "categories": {
-        "L": categories
+      categories: {
+        L: categories,
       },
-      "total_mins": {
-        "N": "0"
+      total_mins: {
+        N: "0",
       },
-      "total_participants": {
-        "N": Object.keys(leadObj).length.toString()
+      total_participants: {
+        N: Object.keys(leadObj).length.toString(),
       },
-      "participant_logs": {
-        "M": {}
+      participant_logs: {
+        M: {},
       },
-      "lead_logs": {
-        "M": leadObj
+      lead_logs: {
+        M: leadObj,
       },
-      "leads": {
-        "L": leads.map(el => { return { "S": el } })
-      }
-    }
-  }
+      leads: {
+        L: leads.map((el) => {
+          return { S: el };
+        }),
+      },
+    },
+  };
 
   ddb.send(new PutItemCommand(query));
 }
 
 async function getInitiativeLeadsDB(initiative_id) {
   let query = {
-    "TableName": "team75_tracking_initiatives",
-    "ConsistentRead": true,
-    "Key": {
-      "initiative_id": {
-        "S": initiative_id
-      }
+    TableName: "team75_tracking_initiatives",
+    ConsistentRead: true,
+    Key: {
+      initiative_id: {
+        S: initiative_id,
+      },
     },
     "ProjectionExpression": "leads"
   }
@@ -531,15 +589,16 @@ async function getInitiativeLeadsDB(initiative_id) {
 
 async function getInitiativeDB(initiative_id) {
   let query = {
-    "TableName": "team75_tracking_initiatives",
-    "ConsistentRead": true,
-    "Key": {
-      "initiative_id": {
-        "S": initiative_id
-      }
+    TableName: "team75_tracking_initiatives",
+    ConsistentRead: true,
+    Key: {
+      initiative_id: {
+        S: initiative_id,
+      },
     },
-    "ProjectionExpression": "initiative_name,categories,total_mins,total_participants,leads"
-  }
+    ProjectionExpression:
+      "initiative_name,categories,total_mins,total_participants,leads",
+  };
 
   let res = await ddb.send(new GetItemCommand(query));
 
@@ -548,48 +607,39 @@ async function getInitiativeDB(initiative_id) {
 
 async function getAllInitiativesDB() {
   let query = {
-    "TableName": "team75_tracking_initiatives",
-    "ConsistentRead": true,
-    "ProjectionExpression": "initiative_id,initiative_name,categories,total_mins,total_participants,leads"
-  }
+    TableName: "team75_tracking_initiatives",
+    ConsistentRead: true,
+    ProjectionExpression:
+      "initiative_id,initiative_name,categories,total_mins,total_participants,leads",
+  };
 
   let res = await ddb.send(new ScanCommand(query));
 
   return res.Items;
 }
 
-async function batchGetInitiativeNamesDB(initiative_ids) {
-  if (typeof initiative_ids === "string") {
-    initiative_ids = [initiative_ids];
-  }
-
-  let keyItems = [];
-
-  initiative_ids.forEach(initiative_id => {
-    keyItems.push({ "initiative_id": { "S": initiative_id } })
-  })
-
-  let res = [];
-  for (let i = 0; i < Math.ceil(keyItems.length / 25); i++) {
-    let slice = keyItems.slice(i * 25, i * 25 + 25);
-    query = {
-      RequestItems: {
-        team75_tracking_initiatives: {
-          Keys: slice,
-          AttributesToGet: [
-            "initiative_name"
-          ]
-        }
-      }
-    };
-    res = [...res, ...(await ddb.send(new BatchGetItemCommand(query)))];
-  }
-  return res;
-}
-
-// Update functions
 async function updateInitiativeDB(user_id, data) {
-  // For @shravan
+  var query = {
+    TableName: "team75_tracking_initiatives",
+    Key: {
+      user_id: { S: user_id },
+    },
+    UpdateExpression: "SET",
+    ExpressionAttributeValues: {},
+    ExpressionAttributeNames: {},
+  };
+
+  // Update expression attribute values
+  Object.entries(data).forEach(([key, value]) => {
+    query.UpdateExpression += ` #${key} = :${key},`;
+    query.ExpressionAttributeValues[`:${key}`] = { S: value };
+    query.ExpressionAttributeNames[`#${key}`] = key;
+  });
+
+  // Remove trailing comma
+  query.UpdateExpression = query.UpdateExpression.slice(0, -1);
+
+  await ddb.send(new UpdateItemCommand(query));
 }
 
 // Delete functions
@@ -636,7 +686,7 @@ module.exports = {
   getInitiativeLeadsDB,
   getInitiativeDB,
   getAllInitiativesDB,
-  batchGetInitiativeNamesDB,
+  // batchGetInitiativeNamesDB,
   updateInitiativeDB,
   batchDeleteInitiativesDB
 }

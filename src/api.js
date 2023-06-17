@@ -17,7 +17,7 @@ const {
   getInitiativeLeadsDB,
   getInitiativeDB,
   getAllInitiativesDB,
-  batchGetInitiativeNamesDB, // Getting initiatives on user's page
+  // batchGetInitiativeNamesDB, // Getting initiatives on user's page
   updateInitiativeDB, // In progress, @shravan
   batchDeleteInitiativesDB
 } = require("./dynamo_wrapper");
