@@ -8,7 +8,7 @@ const {
   ScanCommand,
   GetItemCommand,
   UpdateItemCommand,
-  BatchGetItemCommand
+  BatchGetItemCommand,
 } = require("@aws-sdk/client-dynamodb");
 const uuid_v1 = require("uuid").v1;
 
@@ -198,7 +198,7 @@ async function batchAddUsersDB(
       return { S: el };
     });
 
-    if (await loginUserDB(g_ids[i]) !== undefined) {
+    if ((await loginUserDB(g_ids[i])) !== undefined) {
       // FIX - update instead?
       continue;
     }
@@ -305,9 +305,9 @@ async function batchGetNamesDB(user_ids) {
 
   let keyItems = [];
 
-  user_ids.forEach(user_id => {
-    keyItems.push({ "user_id": { "S": user_id } })
-  })
+  user_ids.forEach((user_id) => {
+    keyItems.push({ user_id: { S: user_id } });
+  });
 
   let res = [];
   for (let i = 0; i < Math.ceil(keyItems.length / 25); i++) {
@@ -316,17 +316,14 @@ async function batchGetNamesDB(user_ids) {
       RequestItems: {
         team75_tracking_students: {
           Keys: slice,
-          AttributesToGet: [
-            "name"
-          ]
-        }
-      }
+          AttributesToGet: ["name"],
+        },
+      },
     };
     res = [...res, ...(await ddb.send(new BatchGetItemCommand(query)))];
   }
   return res;
 }
-
 // Update functions
 async function addInitiativeDataToUserDB(
   user_id,
@@ -579,12 +576,12 @@ async function getInitiativeLeadsDB(initiative_id) {
         S: initiative_id,
       },
     },
-    "ProjectionExpression": "leads"
-  }
+    ProjectionExpression: "leads",
+  };
 
   let res = await ddb.send(new GetItemCommand(query));
 
-  return res.Item.L.map(el => el.S);
+  return res.Item.L.map((el) => el.S);
 }
 
 async function getInitiativeDB(initiative_id) {
@@ -616,6 +613,35 @@ async function getAllInitiativesDB() {
   let res = await ddb.send(new ScanCommand(query));
 
   return res.Items;
+}
+
+async function batchGetInitiativeNamesDB(initiative_ids) {
+  if (typeof initiative_ids === "string") {
+    initiative_ids = [initiative_ids];
+  }
+
+  let keyItems = [];
+
+  initiative_ids.forEach((initiative_id) => {
+    keyItems.push({ initiative_id: { S: initiative_id } });
+  });
+
+  let res = [];
+
+  // Slice every 25 elements
+  for (let i = 0; i < Math.ceil(keyItems.length / 25); i++) {
+    let slice = keyItems.slice(i * 25, i * 25 + 25);
+    query = {
+      RequestItems: {
+        team75_tracking_initiatives: {
+          Keys: slice,
+          AttributesToGet: ["initiative_name"],
+        },
+      },
+    };
+    res = [...res, ...(await ddb.send(new BatchGetItemCommand(query)))];
+  }
+  return res;
 }
 
 async function updateInitiativeDB(user_id, data) {
@@ -650,15 +676,15 @@ async function batchDeleteInitiativesDB(initiative_ids) {
 
   let delItems = [];
 
-  initiative_ids.forEach(initiative_id => {
+  initiative_ids.forEach((initiative_id) => {
     delItems.push({
       DeleteRequest: {
         Key: {
-          "initiative_id": { "S": initiative_id }
-        }
-      }
-    })
-  })
+          initiative_id: { S: initiative_id },
+        },
+      },
+    });
+  });
 
   for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
     let slice = delItems.slice(i * 25, i * 25 + 25);
@@ -686,7 +712,7 @@ module.exports = {
   getInitiativeLeadsDB,
   getInitiativeDB,
   getAllInitiativesDB,
-  // batchGetInitiativeNamesDB,
+  batchGetInitiativeNamesDB,
   updateInitiativeDB,
-  batchDeleteInitiativesDB
-}
+  batchDeleteInitiativesDB,
+};
