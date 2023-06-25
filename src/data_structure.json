@@ -22,10 +22,6 @@
       }
     ],
     "BillingMode": "PAY_PER_REQUEST",
-    "ProvisionedThroughput": {
-      "ReadCapacityUnits": 1,
-      "WriteCapacityUnits": 1
-    },
     "SSESpecification": {
       "Enabled": false
     },
@@ -64,18 +60,10 @@
         "Projection": {
           "ProjectionType": "INCLUDE",
           "NonKeyAttributes": ["department_name", "tags"]
-        },
-        "ProvisionedThroughput": {
-          "ReadCapacityUnits": 1,
-          "WriteCapacityUnits": 1
         }
       }
     ],
     "BillingMode": "PAY_PER_REQUEST",
-    "ProvisionedThroughput": {
-      "ReadCapacityUnits": 10,
-      "WriteCapacityUnits": 10
-    },
     "SSESpecification": {
       "Enabled": false
     },
@@ -99,10 +87,6 @@
       }
     ],
     "BillingMode": "PAY_PER_REQUEST",
-    "ProvisionedThroughput": {
-      "ReadCapacityUnits": 5,
-      "WriteCapacityUnits": 5
-    },
     "TableClass": "STANDARD"
   },
   "departments": {
