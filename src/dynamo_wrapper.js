@@ -555,7 +555,7 @@ async function batchDeleteUsersDB(user_ids) {
 
 /* ----- Initiatives ----- */
 // Get functions
-async function addInitiativeDB(initiative_name, categories, leads) {
+async function addInitiativeDB(initiative_name, description, categories, leads) {
   if (typeof leads === "string") {
     leads = [leads];
   }
@@ -588,6 +588,9 @@ async function addInitiativeDB(initiative_name, categories, leads) {
       },
       initiative_name: {
         S: initiative_name,
+      },
+      description: {
+        S: description
       },
       categories: {
         L: categories,
@@ -642,7 +645,7 @@ async function getInitiativeDB(initiative_id) {
       },
     },
     ProjectionExpression:
-      "initiative_name,categories,total_mins,total_participants,leads",
+      "initiative_name,categories,total_mins,total_participants,leads,description",
   };
 
   let res = await ddb.send(new GetItemCommand(query));
@@ -655,7 +658,7 @@ async function getAllInitiativesDB() {
     TableName: "team75_tracking_initiatives",
     ConsistentRead: true,
     ProjectionExpression:
-      "initiative_id,initiative_name,categories,total_mins,total_participants,leads",
+      "initiative_id,initiative_name,categories,total_mins,total_participants,leads,description",
   };
 
   let res = await ddb.send(new ScanCommand(query));

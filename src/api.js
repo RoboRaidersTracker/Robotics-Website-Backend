@@ -463,13 +463,14 @@ async function addInitiative(cookies, body) {
     return { statusCode: 403 };
   }
 
-  addInitiativeDB(body.initiative_name, body.categories, body.leads);
+  addInitiativeDB(body.initiative_name, body.description, body.categories, body.leads);
   return { statusCode: 200 };
 }
 
 async function getInitiative(body){
   let res = await getInitiativeDB(body.initiative_id);
   res.initiative_name = res.initiative_name.S;
+  res.description = res.description.S;
   res.categories = res.categories.L.map(el => el.S);
   res.total_mins = parseInt(res.total_mins.N);
   res.total_participants = parseInt(res.total_participants.N);
@@ -484,7 +485,9 @@ async function getInitiative(body){
 async function getAllInitiatives(){
   let res = await getAllInitiativesDB();
   res.map(el => {
+    el.initiative_id = el.initiative_id.S;
     el.initiative_name = el.initiative_name.S;
+    el.description = el.description.S;
     el.categories = el.categories.L.map(el2 => el2.S);
     el.total_mins = parseInt(el.total_mins.N);
     el.total_participants = parseInt(el.total_participants.N);
