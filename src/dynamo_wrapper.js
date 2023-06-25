@@ -55,13 +55,6 @@ async function initSampleData() {
       ["mentor", "student"]
     );
   } catch {}
-  try {
-    await addInitiativeDB(
-      "Initiative Name",
-      ["STEM", "Internal"],
-      "56d26180-ff2e-11ed-ac97-659b7a975caa"
-    );
-  } catch {}
 }
 
 /* ----- Session Management ----- */
@@ -208,13 +201,7 @@ async function batchAddUsersDB(
     putItems.push({
       PutRequest: {
         Item: {
-          // FIX
-          user_id: {
-            S:
-              g_ids[i] == "114409764148443206366"
-                ? "56d26180-ff2e-11ed-ac97-659b7a975caa"
-                : user_id,
-          },
+          user_id: { S: user_id },
           google_id: { S: g_ids[i] },
           name: { S: g_names[i] },
           department_name: { S: department_names[i] },
@@ -562,10 +549,7 @@ async function addInitiativeDB(initiative_name, description, categories, leads) 
 
   // Check if leads exist
 
-  let initiative_id =
-    leads[0] == "56d26180-ff2e-11ed-ac97-659b7a975caa"
-      ? "0ecda500-ff53-11ed-8e9f-339a46b4c7b3"
-      : uuid_v1();
+  let initiative_id = uuid_v1();
 
   if (typeof categories === "string") {
     categories = [{ S: categories }];
