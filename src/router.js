@@ -4,7 +4,17 @@ const {
   homepage,
   checkLogin,
   loginClient,
-  getUserOverview
+  getUserOverview,
+  getAllUsersOverview,
+  batchAddStudents,
+  batchDeleteUsers,
+  batchCleanUsers,
+  getUserInitiativeData,
+  addInitiativeDataToUser,
+  addInitiative,
+  getInitiative,
+  getAllInitiatives,
+  getInitiativeLeads
 } = require("./api")
 
 const devName = "Eshaan Debnath"
@@ -38,11 +48,36 @@ async function route(event) {
       response = await loginClient(origin, body);
     } else if (path == "/user" && method == "POST") {
       response = await getUserOverview(cookies, body);
+    } else if (path == "/users" && method == "POST") {
+      response = await getAllUsersOverview(cookies, body);
+    } else if (path == "/user-initiatives" && method == "POST") {
+      response = await getUserInitiativeData(cookies, body);
+    } else if (path == "/add-users" && method == "POST") {
+      response = await batchAddStudents(cookies, origin, body);
+    // } else if (path == "/update-user" && method == "POST") {
+    //   response = await getUserOverview(cookies, body);
+    } else if (path == "/log-hours" && method == "POST") {
+      response = await addInitiativeDataToUser(cookies, body);
+    } else if (path == "/delete-users" && method == "POST") {
+      response = await batchDeleteUsers(cookies, body);
+    } else if (path == "/clean-users" && method == "POST") {
+      response = await batchCleanUsers(cookies, body);
+    } else if (path == "/initiatives" && method == "POST") {
+      response = await getAllInitiatives();
+    } else if (path == "/add-initiative" && method == "POST") {
+      response = await addInitiative(cookies, body);
+    // } else if (path == "/update-initiative" && method == "POST") {
+    //   response = await getUserOverview(cookies, body);
+    } else if (path == "/initiative" && method == "POST") {
+      response = await getInitiative(body);
+    // } else if (path == "/delete-initiatives" && method == "POST") {
+    //   response = await getUserOverview(cookies, body);
+
     } else if (path == "/force-update") {
       await forceInit();
-      response = { "statusCode": 200, "body": JSON.stringify({"message": "Success"}) };
+      response = { "statusCode": 200, "body": JSON.stringify({ "message": "Success" }) };
     } else {
-      response = { "statusCode": 400, "body": JSON.stringify({"message": "Bad request"}) };
+      response = { "statusCode": 400, "body": JSON.stringify({ "message": "Bad request" }) };
     }
 
     if (!["string", "number", "boolean", "undefined"].includes(typeof response["body"])) {
@@ -55,15 +90,15 @@ async function route(event) {
         "Content-Type": "text/plain"
       },
       "body": `Oops! Looks like our server returned an error.\n` +
-`To report this issue, please contact the developer, ${devName}, at "${devEmail}".\n` +
-`Be sure to include the traceback below:
+        `To report this issue, please contact the developer, ${devName}, at "${devEmail}".\n` +
+        `Be sure to include the traceback below:
 ----------
 ${error.stack}`
     }
     console.log(error.stack);
   }
 
-  if (response["body"]){
+  if (response["body"]) {
     response["headers"] = response["headers"] || {};
     response["headers"]["Content-Type"] = response["headers"]["Content-Type"] || "application/json";
   }

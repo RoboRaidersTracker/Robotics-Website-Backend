@@ -52,11 +52,11 @@ async function initSampleData() {
       "eshaandebnath@gmail.com",
       "https://lh3.googleusercontent.com/a/AAcHTtfsmybpx59Z8dwUWN1saEu0Cm8Pwsl_h_PKns9e5w=s100",
       "Programming",
-      "mentor"
+      ["mentor", "student"]
     );
   } catch {}
   try {
-    await addInitiative(
+    await addInitiativeDB(
       "Initiative Name",
       ["STEM", "Internal"],
       "56d26180-ff2e-11ed-ac97-659b7a975caa"
@@ -219,7 +219,7 @@ async function batchAddUsersDB(
           name: { S: g_names[i] },
           department_name: { S: department_names[i] },
           profile_picture: { S: g_photos[i] },
-          initiative_hours: { N: "0" },
+          initiative_mins: { N: "0" },
           initiative_data: { L: [] },
           attendance: { L: [] },
           tags: { L: tags_s[i] },
@@ -270,7 +270,7 @@ async function getUserOverviewDB(user_id) {
       },
     },
     ProjectionExpression:
-      "user_id,email,#name,profile_picture,department_name,initiative_hours,tags",
+      "user_id,email,#name,profile_picture,department_name,initiative_mins,tags",
     ExpressionAttributeNames: {
       "#name": "name",
     },
@@ -279,6 +279,22 @@ async function getUserOverviewDB(user_id) {
   let res = await ddb.send(new GetItemCommand(query));
 
   return res.Item;
+}
+
+async function getAllUsersOverviewDB() {
+  let query = {
+    TableName: "team75_tracking_students",
+    ConsistentRead: true,
+    ProjectionExpression:
+      "user_id,email,#name,profile_picture,department_name,initiative_mins,tags",
+    ExpressionAttributeNames: {
+      "#name": "name",
+    },
+  };
+
+  let res = await ddb.send(new ScanCommand(query));
+
+  return res.Items;
 }
 
 async function getUserInitiativeDataDB(user_id) {
@@ -290,7 +306,7 @@ async function getUserInitiativeDataDB(user_id) {
         S: user_id,
       },
     },
-    ProjectionExpression: "initiative_hours,initiative_data",
+    ProjectionExpression: "initiative_mins,initiative_data",
   };
 
   let res = await ddb.send(new GetItemCommand(query));
@@ -324,27 +340,23 @@ async function batchGetNamesDB(user_ids) {
   }
   return res;
 }
+
 // Update functions
 async function addInitiativeDataToUserDB(
   user_id,
   initiative_id,
   prep_time,
   duration,
-  timestamp,
-  lead
+  timestamp
 ) {
-  // Check if initiative exists
-
-  if (typeof lead === "string") {
-    lead = lead.toLowerCase() === "true";
+  let leads = await getInitiativeLeadsDB(initiative_id);
+  let isLead = leads.includes(user_id);
+  if (!leads.includes(user_id) && prep_time) {
+    return false;
   }
 
   if (typeof prep_time === "string") {
     prep_time = prep_time.toLowerCase() === "true";
-  }
-
-  if (!lead && prep_time) {
-    return false;
   }
 
   if (typeof prep_time === "boolean") {
@@ -366,31 +378,36 @@ async function addInitiativeDataToUserDB(
         S: user_id,
       },
     },
-    UpdateExpression:
-      "SET initiative_data = list_append(:datapoint, initiative_data)",
+    UpdateExpression: `SET initiative_mins = initiative_mins + :mins_change,
+      initiative_data = list_append(:datapoint, initiative_data)`,
     ExpressionAttributeValues: {
       ":datapoint": {
-        M: {
-          initiative_id: {
-            S: initiative_id,
-          },
-          prep_time: {
-            BOOL: prep_time,
-          },
-          duration: {
-            N: duration,
-          },
-          timestamp: {
-            N: timestamp,
-          },
-        },
+        L: [
+          {
+            M: {
+              initiative_id: {
+                S: initiative_id,
+              },
+              prep_time: {
+                BOOL: prep_time,
+              },
+              duration: {
+                N: duration,
+              },
+              timestamp: {
+                N: timestamp,
+              },
+            },
+          }
+        ]
       },
+      ":mins_change": { N: duration },
     },
   };
 
   ddb.send(new UpdateItemCommand(query));
 
-  att = lead ? "lead_logs" : "participant_logs";
+  att = isLead ? "lead_logs" : "participant_logs";
 
   // https://stackoverflow.com/questions/47472603
   // https://stackoverflow.com/questions/47415522
@@ -401,35 +418,43 @@ async function addInitiativeDataToUserDB(
         S: initiative_id,
       },
     },
-    UpdateExpression: `SET ${att}.${user_id} = list_append(:datapoint, if_not_exists(${att}.${user_id}, :empty)),
-    total_mins = total_mins + :mins_change`,
+    UpdateExpression: `SET total_mins = total_mins + :mins_change,
+    ${att}.#user_id = list_append(:datapoint, if_not_exists(${att}[0].#user_id, :empty))`,
     ExpressionAttributeValues: {
       ":datapoint": {
-        M: {
-          duration: {
-            N: duration,
-          },
-          timestamp: {
-            N: timestamp,
-          },
-        },
+        L: [
+          {
+            M: {
+              duration: {
+                N: duration,
+              },
+              timestamp: {
+                N: timestamp,
+              },
+            },
+          }
+        ]
       },
-      ":mins_change": duration,
+      ":mins_change": { N: duration },
       ":empty": { L: [] },
+    },
+    ExpressionAttributeNames: {
+      "#user_id": user_id,
     },
   };
 
-  if (lead) {
-    query.ExpressionAttributeValues[":datapoint"].M.prep_time = {
+  if (isLead) {
+    query.ExpressionAttributeValues[":datapoint"].L[0].M.prep_time = {
       BOOL: prep_time,
     };
   }
 
   ddb.send(new UpdateItemCommand(query));
+  return true;
 }
 
 async function updateUserDB(user_id, data) {
-  var query = {
+  let query = {
     TableName: "team75_tracking_students",
     Key: {
       user_id: { S: user_id },
@@ -460,17 +485,40 @@ async function batchCleanUsersDB(user_ids) {
 
   let putItems = [];
 
-  user_ids.forEach((user_id) => {
+  for (let user_id of user_ids){
+    let user = await ddb.send(new GetItemCommand({
+      TableName: "team75_tracking_students",
+      ConsistentRead: true,
+      Key: {
+        user_id: {
+          S: user_id,
+        },
+      },
+      ProjectionExpression:
+        "email,#name,profile_picture,department_name,tags,google_id",
+      ExpressionAttributeNames: {
+        "#name": "name",
+      },
+    })).then(el => el.Item);
+  
     putItems.push({
       PutRequest: {
         Item: {
           user_id: { S: user_id },
+          attendance: { L: [] },
+          google_id: user.google_id,
+          name: user.name,
+          department_name: user.department_name,
+          profile_picture: user.profile_picture,
+          initiative_mins: { N: "0" },
           initiative_data: { L: [] },
           attendance: { L: [] },
+          tags: user.tags,
+          email: user.email,
         },
       },
     });
-  });
+  }
 
   for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
     let slice = putItems.slice(i * 25, i * 25 + 25);
@@ -581,7 +629,7 @@ async function getInitiativeLeadsDB(initiative_id) {
 
   let res = await ddb.send(new GetItemCommand(query));
 
-  return res.Item.L.map((el) => el.S);
+  return res.Item?.leads.L.map((el) => el.S) || [];
 }
 
 async function getInitiativeDB(initiative_id) {
@@ -645,7 +693,7 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
 }
 
 async function updateInitiativeDB(user_id, data) {
-  var query = {
+  let query = {
     TableName: "team75_tracking_initiatives",
     Key: {
       user_id: { S: user_id },
@@ -702,6 +750,7 @@ module.exports = {
   batchAddUsersDB,
   loginUserDB,
   getUserOverviewDB,
+  getAllUsersOverviewDB,
   getUserInitiativeDataDB,
   batchGetNamesDB,
   addInitiativeDataToUserDB,

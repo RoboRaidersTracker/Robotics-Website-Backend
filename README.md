@@ -35,3 +35,8 @@ Make sure to use with `--table-name`
 
 # Trying to set multiple cookies?
 https://stackoverflow.com/questions/45111150/setting-cookie-in-http-response-header-from-aws-lambda-node-js
+
+
+
+https://stackoverflow.com/questions/56570492/can-a-nodejs-script-delete-his-own-file
+https://stackoverflow.com/questions/62372407/how-can-i-know-whether-it-is-running-inside-lambda

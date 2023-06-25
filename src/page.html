@@ -10,9 +10,15 @@
 <body>
 
 <div class="sign-in"><button>Sign In</button></div>
+<div class="get-users"><button>Get All Users</button></div>
 <div class="get-user-data"><button>Get User Data</button></div>
+<div class="get-user-initiatives"><button>Get User Initiatives</button></div>
 <div class="log-hours"><button>Log Hours</button></div>
-<div class="get-hours"><button>Get Hours</button></div>
+<div class="add-users"><button>Add Users</button></div>
+<div class="clean-users"><button>Clean Users</button></div>
+<div class="delete-users"><button>Delete Users</button></div>
+<div class="get-initiative"><button>Get Initiative</button></div>
+<div class="get-initiatives"><button>Get Initiatives</button></div>
 
 <script>
 // function setProfile(profileName, profilePicURL){
@@ -24,8 +30,8 @@
 function signIn(){
   const client = google.accounts.oauth2.initCodeClient({
     client_id: '672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com',
-    // scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/contacts.readonly https://www.googleapis.com/auth/directory.readonly',
-    scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+    // scope: 'https://www.googleapis.com/auth/contacts.readonly',
+    scope: "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
     ux_mode: 'popup',
     callback: (response) => {
       fetch("./auth", {
@@ -34,14 +40,26 @@ function signIn(){
           "Content-Type": "application/json",
           "X-Requested-With": "javascript-fetch"
         },
-        body: JSON.stringify({code: response.code, host: document.location.host})
+        body: JSON.stringify({code: response.code })
       })
-      .then(res => res.json())
-      .then(data => console.log(data))
+      .then(async res => console.log(await res.json()))
     },
   });
 
   client.requestCode()
+}
+
+function getUsers(){
+  fetch("./users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    }
+  }).then(
+    data => print(data),
+    err => console.log(err)
+  )
 }
 
 function getUserData(){
@@ -53,13 +71,27 @@ function getUserData(){
     },
     body: JSON.stringify({"user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa"})
   }).then(
-    async data => console.log(await data.json()),
-    async err => console.log(err)
+    data => print(data),
+    err => console.log(err)
+  )
+}
+
+function getUserInitiatives(){
+  fetch("./user-initiatives", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({"user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa"})
+  }).then(
+    data => print(data),
+    err => console.log(err)
   )
 }
 
 function logHours(){
-  fetch("./user-log", {
+  fetch("./log-hours", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -67,27 +99,112 @@ function logHours(){
     },
     body: JSON.stringify({
       "user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa",
-      "initiative_id": "aaa",
-      "prep_time": true,
+      "initiative_id": "0ecda500-ff53-11ed-8e9f-339a46b4c7b3",
+      "prep_time": false,
       "duration": 500
     })
   }).then(
-    async data => console.log(await data.json()),
-    async err => console.log(err)
+    data => print(data),
+    err => console.log(err)
   )
 }
 
-function getHours(){
-  fetch("./user-initiatives", {
+async function addUsers(){
+  let code = await crossFetch()
+  fetch("./add-users", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Requested-With": "javascript-fetch"
     },
-    body: JSON.stringify({ "user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa" })
+    body: JSON.stringify({
+      "code": code,
+      "department": "Programming",
+      "tags": "returning-student",
+      "searches": ["Eshaan Debnath debnathe@htps.us", "Adhithi Rajesh rajeshad@htps.us"]
+    })
   }).then(
-    async data => console.log(await data.json()),
-    async err => console.log(err)
+    data => print(data),
+    err => console.log(err)
+  )
+}
+
+function crossFetch(){
+  return new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initCodeClient({
+      client_id: '672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com',
+      scope: "https://www.googleapis.com/auth/contacts.readonly",
+      ux_mode: 'popup',
+      callback: res => {
+        resolve(res.code)
+      },
+    });
+
+    client.requestCode()
+  })
+}
+
+function cleanUsers(){
+  fetch("./clean-users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({
+      "user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa"
+    })
+  }).then(
+    data => print(data),
+    err => console.log(err)
+  )
+}
+
+function deleteUsers(){
+  fetch("./delete-users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({
+      "user_ids": [
+        "ff840150-1232-11ee-bc62-0f834f51d39a",
+        "ff8030c0-1232-11ee-bc62-0f834f51d39a"
+      ]
+    })
+  }).then(
+    data => print(data),
+    err => console.log(err)
+  )
+}
+
+function getInitiative(){
+  fetch("./initiative", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({
+      "initiative_id": "0ecda500-ff53-11ed-8e9f-339a46b4c7b3"
+    })
+  }).then(
+    data => print(data),
+    err => console.log(err)
+  )
+}
+
+function getInitiatives(){
+  fetch("./initiatives", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    }
+  }).then(
+    data => print(data),
+    err => console.log(err)
   )
 }
 
@@ -108,14 +225,31 @@ fetch("./auth", {
   }
 
   console.log(await res.json());
-
-  document.getElementsByClassName("get-user-data")[0]
-    .children[0].addEventListener("click", getUserData);
-  document.getElementsByClassName("log-hours")[0]
-    .children[0].addEventListener("click", logHours);
-  document.getElementsByClassName("get-hours")[0]
-    .children[0].addEventListener("click", getHours);
 })
+
+document.getElementsByClassName("get-users")[0]
+  .children[0].addEventListener("click", getUsers);
+document.getElementsByClassName("get-user-data")[0]
+  .children[0].addEventListener("click", getUserData);
+document.getElementsByClassName("get-user-initiatives")[0]
+  .children[0].addEventListener("click", getUserInitiatives);
+document.getElementsByClassName("log-hours")[0]
+  .children[0].addEventListener("click", logHours);
+document.getElementsByClassName("add-users")[0]
+  .children[0].addEventListener("click", addUsers);
+document.getElementsByClassName("clean-users")[0]
+  .children[0].addEventListener("click", cleanUsers);
+document.getElementsByClassName("delete-users")[0]
+  .children[0].addEventListener("click", deleteUsers);
+document.getElementsByClassName("get-initiative")[0]
+  .children[0].addEventListener("click", getInitiative);
+document.getElementsByClassName("get-initiatives")[0]
+  .children[0].addEventListener("click", getInitiatives);
+
+async function print(data){
+  if (data.status == 200) console.log(await data.json());
+  else console.log(data.status)
+}
 
 </script>
 </body>

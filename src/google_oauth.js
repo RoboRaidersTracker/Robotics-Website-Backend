@@ -45,28 +45,32 @@ async function getAllClientIDs(tokens, oauth2Client, searches) {
   client.setCredentials(tokens);
 
   data = new Array(searches.length);
-  for (let i = 0; i < searches.length; i++){
+  for (let i = 0; i < searches.length; i++) {
     data[i] = await peopleAPI.searchContacts({
       "query": searches[i],
       "readMask": "names,emailAddresses,photos",
       "sources": [
         "READ_SOURCE_TYPE_PROFILE",
-        "READ_SOURCE_TYPE_CONTACT",
-        "READ_SOURCE_TYPE_DOMAIN_CONTACT"
-      ]
+        "READ_SOURCE_TYPE_CONTACT"
+      ],
+      auth: client
     });
   }
-  // await Promise.all(data);
-  data.map(response => {
+
+  data = data.map((user, i) =>
+    user.data.results.find(res => 
+      res.person?.emailAddresses.find(email => searches[i].includes(email.value)) != undefined
+    ).person
+  )
+
+  return data.map(res => {
     return {
-      id: response.data.resourceName.split("/")[1],
-      name: response.data.names[0].displayName,
-      email: response.data.emailAddresses[0].value,
-      photo: response.data.photos[0].url
+      id: res.resourceName.split("/")[1],
+      name: res.names[0].displayName,
+      email: res.emailAddresses[0].value,
+      photo: res.photos[0].url
     };
   })
-
-  return data;
 }
 
 module.exports = { setOrigin, getTokens, getClientID, getAllClientIDs }

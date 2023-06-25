@@ -63,10 +63,7 @@
         ],
         "Projection": {
           "ProjectionType": "INCLUDE",
-          "NonKeyAttributes": [
-            "department_name",
-            "tags"
-          ]
+          "NonKeyAttributes": ["department_name", "tags"]
         },
         "ProvisionedThroughput": {
           "ReadCapacityUnits": 1,
