@@ -31,14 +31,14 @@ function getCookies(header) {
 
 async function route(event) {
   let response;
+  const origin = event["headers"]["origin"];
+  const path = event["requestContext"]?.["http"]?.["path"].trim();
+  const method = event["requestContext"]?.["http"]?.["method"].trim();
+  const cookies = getCookies(event);
+  const body = event["body"] == undefined ? undefined : JSON.parse(event["body"]);
+
   try {
     cleanCacheAndDatabase();
-
-    const origin = event["headers"]["origin"];
-    const path = event["requestContext"]?.["http"]?.["path"].trim();
-    const method = event["requestContext"]?.["http"]?.["method"].trim();
-    const cookies = getCookies(event);
-    const body = event["body"] == undefined ? undefined : JSON.parse(event["body"]);
 
     if (path == "/" && method == "GET") {
       response = await homepage();
@@ -87,7 +87,7 @@ async function route(event) {
     response = {
       "statusCode": 500,
       "headers": {
-        "Content-Type": "text/plain"
+        "Content-Type": "text/plain",
       },
       "body": `Oops! Looks like our server returned an error.\n` +
         `To report this issue, please contact the developer, ${devName}, at "${devEmail}".\n` +
@@ -98,8 +98,15 @@ ${error.stack}`
     console.log(error.stack);
   }
 
+  response["headers"] = response["headers"] || {};
+  // Required for CORS support to work
+  // response["headers"]["Access-Control-Allow-Origin"] = "http://localhost";
+  // Required for cookies, authorization headers with HTTPS
+  // response["headers"]["Access-Control-Allow-Credentials"] = true;
+  // response["headers"]["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Origin, Accept";
+  // response["headers"]["Access-Control-Allow-Methods"] = "GET, POST";
+
   if (response["body"]) {
-    response["headers"] = response["headers"] || {};
     response["headers"]["Content-Type"] = response["headers"]["Content-Type"] || "application/json";
   }
 

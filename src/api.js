@@ -168,7 +168,11 @@ async function loginClient(origin, body) {
     return {
       statusCode: 200,
       headers: {
-        "Set-Cookie": `session-token=${session_token}; Expires=${expireTime}; HttpOnly;`,
+        "Set-Cookie": `session-token=${
+          session_token
+        }; Expires=${
+          expireTime
+        }; Path=/; SameSite=None; Secure;`,
       },
       body: { message: "Success!" },
     };
