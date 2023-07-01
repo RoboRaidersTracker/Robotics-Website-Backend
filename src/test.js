@@ -13,15 +13,15 @@ let helloFromLambdaHandler = async (event) => {
   t.setSeconds(t.getSeconds() + 10);
 
   return {
-    "statusCode": 200,
-    "headers": {
-      "Content-Type": "text/html", "Set-Cookie": `cheese=good; Expires=${t.toUTCString()
-        }; HttpOnly`
+    statusCode: 200,
+    headers: {
+      "Content-Type": "text/html",
+      "Set-Cookie": `cheese=good; Expires=${t.toUTCString()}; HttpOnly`,
     },
-    "body": "<html><body>Wassap?</body></html>"
-  }
+    body: "<html><body>Wassap?</body></html>",
+  };
 };
 
 module.exports = {
-  test: helloFromLambdaHandler
+  test: helloFromLambdaHandler,
 };

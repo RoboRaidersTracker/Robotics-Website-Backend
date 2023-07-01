@@ -319,11 +319,16 @@ async function batchGetNamesDB(user_ids) {
       RequestItems: {
         team75_tracking_students: {
           Keys: slice,
-          AttributesToGet: ["name"],
+          AttributesToGet: ["name", "user_id"],
         },
       },
     };
-    res = [...res, ...(await ddb.send(new BatchGetItemCommand(query)))];
+    res = [
+      ...res,
+      ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
+        "team75_tracking_students"
+      ],
+    ];
   }
   return res;
 }
@@ -385,8 +390,8 @@ async function addInitiativeDataToUserDB(
                 N: timestamp,
               },
             },
-          }
-        ]
+          },
+        ],
       },
       ":mins_change": { N: duration },
     },
@@ -419,8 +424,8 @@ async function addInitiativeDataToUserDB(
                 N: timestamp,
               },
             },
-          }
-        ]
+          },
+        ],
       },
       ":mins_change": { N: duration },
       ":empty": { L: [] },
@@ -472,22 +477,26 @@ async function batchCleanUsersDB(user_ids) {
 
   let putItems = [];
 
-  for (let user_id of user_ids){
-    let user = await ddb.send(new GetItemCommand({
-      TableName: "team75_tracking_students",
-      ConsistentRead: true,
-      Key: {
-        user_id: {
-          S: user_id,
-        },
-      },
-      ProjectionExpression:
-        "email,#name,profile_picture,department_name,tags,google_id",
-      ExpressionAttributeNames: {
-        "#name": "name",
-      },
-    })).then(el => el.Item);
-  
+  for (let user_id of user_ids) {
+    let user = await ddb
+      .send(
+        new GetItemCommand({
+          TableName: "team75_tracking_students",
+          ConsistentRead: true,
+          Key: {
+            user_id: {
+              S: user_id,
+            },
+          },
+          ProjectionExpression:
+            "email,#name,profile_picture,department_name,tags,google_id",
+          ExpressionAttributeNames: {
+            "#name": "name",
+          },
+        })
+      )
+      .then((el) => el.Item);
+
     putItems.push({
       PutRequest: {
         Item: {
@@ -542,7 +551,13 @@ async function batchDeleteUsersDB(user_ids) {
 
 /* ----- Initiatives ----- */
 // Get functions
-async function addInitiativeDB(initiative_name, description, categories, leads) {
+async function addInitiativeDB(
+  initiative_name,
+  picture,
+  description,
+  categories,
+  leads
+) {
   if (typeof leads === "string") {
     leads = [leads];
   }
@@ -574,7 +589,10 @@ async function addInitiativeDB(initiative_name, description, categories, leads) 
         S: initiative_name,
       },
       description: {
-        S: description
+        S: description,
+      },
+      picture: {
+        S: picture,
       },
       categories: {
         L: categories,
@@ -629,7 +647,7 @@ async function getInitiativeDB(initiative_id) {
       },
     },
     ProjectionExpression:
-      "initiative_name,categories,total_mins,total_participants,leads,description",
+      "initiative_name,categories,total_mins,total_participants,leads,description,picture",
   };
 
   let res = await ddb.send(new GetItemCommand(query));
@@ -642,7 +660,7 @@ async function getAllInitiativesDB() {
     TableName: "team75_tracking_initiatives",
     ConsistentRead: true,
     ProjectionExpression:
-      "initiative_id,initiative_name,categories,total_mins,total_participants,leads,description",
+      "initiative_id,initiative_name,categories,total_mins,total_participants,leads,description,picture",
   };
 
   let res = await ddb.send(new ScanCommand(query));
@@ -670,11 +688,16 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
       RequestItems: {
         team75_tracking_initiatives: {
           Keys: slice,
-          AttributesToGet: ["initiative_name"],
+          AttributesToGet: ["initiative_name", "initiative_id"],
         },
       },
     };
-    res = [...res, ...(await ddb.send(new BatchGetItemCommand(query)))];
+    res = [
+      ...res,
+      ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
+        "team75_tracking_initiatives"
+      ],
+    ];
   }
   return res;
 }

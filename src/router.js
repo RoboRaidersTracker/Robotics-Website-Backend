@@ -14,15 +14,16 @@ const {
   addInitiative,
   getInitiative,
   getAllInitiatives,
-  getInitiativeLeads
-} = require("./api")
+  batchGetNames,
+  batchGetInitiativeNames,
+} = require("./api");
 
-const devName = "Eshaan Debnath"
-const devEmail = "debnathe@htps.us"
+const devName = "Eshaan Debnath";
+const devEmail = "debnathe@htps.us";
 
 function getCookies(header) {
-  map = {}
-  header["cookies"]?.forEach(el => {
+  map = {};
+  header["cookies"]?.forEach((el) => {
     let parts = el.split("=");
     map[parts[0].trim()] = parts[1].trim();
   });
@@ -35,14 +36,23 @@ async function route(event) {
   const path = event["requestContext"]?.["http"]?.["path"].trim();
   const method = event["requestContext"]?.["http"]?.["method"].trim();
   const cookies = getCookies(event);
-  const body = event["body"] == undefined ? undefined : JSON.parse(event["body"]);
+  const body =
+    event["body"] == undefined
+      ? undefined
+      : typeof event.body == "object"
+      ? event.body
+      : JSON.parse(event.body);
 
   try {
     cleanCacheAndDatabase();
 
+    if (method == "POST" && !cookies["session-token"] && body?.session_token) {
+      cookies["session-token"] = body.session_token;
+    }
+
     if (path == "/" && method == "GET") {
       response = await homepage();
-    } else if (path == "/auth" && method == "GET") {
+    } else if (path == "/pre-auth" && method == "POST") {
       response = await checkLogin(cookies);
     } else if (path == "/auth" && method == "POST") {
       response = await loginClient(origin, body);
@@ -50,12 +60,14 @@ async function route(event) {
       response = await getUserOverview(cookies, body);
     } else if (path == "/users" && method == "POST") {
       response = await getAllUsersOverview(cookies, body);
+    } else if (path == "/translate-user-ids" && method == "POST") {
+      response = await batchGetNames(body);
     } else if (path == "/user-initiatives" && method == "POST") {
       response = await getUserInitiativeData(cookies, body);
     } else if (path == "/add-users" && method == "POST") {
       response = await batchAddStudents(cookies, origin, body);
-    // } else if (path == "/update-user" && method == "POST") {
-    //   response = await getUserOverview(cookies, body);
+      // } else if (path == "/update-user" && method == "POST") {
+      //   response = await getUserOverview(cookies, body);
     } else if (path == "/log-hours" && method == "POST") {
       response = await addInitiativeDataToUser(cookies, body);
     } else if (path == "/delete-users" && method == "POST") {
@@ -66,35 +78,47 @@ async function route(event) {
       response = await getAllInitiatives();
     } else if (path == "/add-initiative" && method == "POST") {
       response = await addInitiative(cookies, body);
-    // } else if (path == "/update-initiative" && method == "POST") {
-    //   response = await getUserOverview(cookies, body);
+      // } else if (path == "/update-initiative" && method == "POST") {
+      //   response = await getUserOverview(cookies, body);
     } else if (path == "/initiative" && method == "POST") {
       response = await getInitiative(body);
-    // } else if (path == "/delete-initiatives" && method == "POST") {
-    //   response = await getUserOverview(cookies, body);
-
+    } else if (path == "/translate-initiative-ids" && method == "POST") {
+      response = await batchGetInitiativeNames(body);
+      // } else if (path == "/delete-initiatives" && method == "POST") {
+      //   response = await getUserOverview(cookies, body);
     } else if (path == "/force-update") {
       await forceInit();
-      response = { "statusCode": 200, "body": JSON.stringify({ "message": "Success" }) };
+      response = {
+        statusCode: 200,
+        body: JSON.stringify({ message: "Success" }),
+      };
     } else {
-      response = { "statusCode": 400, "body": JSON.stringify({ "message": "Bad request" }) };
+      response = {
+        statusCode: 400,
+        body: JSON.stringify({ message: "Bad request" }),
+      };
     }
 
-    if (!["string", "number", "boolean", "undefined"].includes(typeof response["body"])) {
+    if (
+      !["string", "number", "boolean", "undefined"].includes(
+        typeof response["body"]
+      )
+    ) {
       response["body"] = JSON.stringify(response["body"]);
     }
   } catch (error) {
     response = {
-      "statusCode": 500,
-      "headers": {
+      statusCode: 500,
+      headers: {
         "Content-Type": "text/plain",
       },
-      "body": `Oops! Looks like our server returned an error.\n` +
+      body:
+        `Oops! Looks like our server returned an error.\n` +
         `To report this issue, please contact the developer, ${devName}, at "${devEmail}".\n` +
         `Be sure to include the traceback below:
 ----------
-${error.stack}`
-    }
+${error.stack}`,
+    };
     console.log(error.stack);
   }
 
@@ -107,7 +131,8 @@ ${error.stack}`
   // response["headers"]["Access-Control-Allow-Methods"] = "GET, POST";
 
   if (response["body"]) {
-    response["headers"]["Content-Type"] = response["headers"]["Content-Type"] || "application/json";
+    response["headers"]["Content-Type"] =
+      response["headers"]["Content-Type"] || "application/json";
   }
 
   return response;

@@ -168,13 +168,13 @@ async function loginClient(origin, body) {
     return {
       statusCode: 200,
       headers: {
-        "Set-Cookie": `session-token=${
-          session_token
-        }; Expires=${
-          expireTime
-        }; Path=/; SameSite=None; Secure;`,
+        "Set-Cookie": `session-token=${session_token}; Expires=${expireTime}; Path=/; SameSite=None; Secure;`,
       },
-      body: { message: "Success!" },
+      body: {
+        message: "Success!",
+        session_token: session_token,
+        user_id: user.user_id.S,
+      },
     };
   } catch (error) {
     console.log(error);
@@ -207,7 +207,8 @@ async function getUserOverview(cookies, body) {
     };
   }
 
-  let response = await getUserOverviewDB(body.user_id || user.user_id), res = {};
+  let response = await getUserOverviewDB(body.user_id || user.user_id),
+    res = {};
   res.initiative_mins = response.initiative_mins.N;
   res.user_id = response.user_id.S;
   res.department_name = response.department_name.S;
@@ -241,7 +242,7 @@ async function getAllUsersOverview(cookies, body) {
   }
 
   let response = await getAllUsersOverviewDB();
-  response.map(res => {
+  response.map((res) => {
     res.initiative_mins = res.initiative_mins.N;
     res.user_id = res.user_id.S;
     res.department_name = res.department_name.S;
@@ -249,7 +250,7 @@ async function getAllUsersOverview(cookies, body) {
     res.profile_picture = res.profile_picture.S;
     res.email = res.email.S;
     res.tags = res.tags.L.map((el) => el.S);
-  })
+  });
 
   return {
     statusCode: 200,
@@ -284,6 +285,7 @@ async function batchAddStudents(cookies, origin, body) {
       oauth2Client,
       body.searches || [body.search]
     );
+    console.log(g_data);
 
     let g_ids = g_data.map((el) => el.id),
       g_names = g_data.map((el) => el.name),
@@ -310,7 +312,7 @@ async function batchAddStudents(cookies, origin, body) {
       throw new Error("Tag list and user list are different sizes.");
     }
 
-    batchAddUsersDB(
+    await batchAddUsersDB(
       g_ids,
       g_names,
       g_emails,
@@ -320,7 +322,7 @@ async function batchAddStudents(cookies, origin, body) {
     );
 
     return {
-      statusCode: 200
+      statusCode: 200,
     };
   } catch (error) {
     console.log(error);
@@ -399,7 +401,7 @@ async function getUserInitiativeData(cookies, body) {
 
   let res = await getUserInitiativeDataDB(body.user_id || user.user_id);
   res.initiative_mins = res.initiative_mins.N;
-  res.initiative_data = res.initiative_data.L.map(el => {
+  res.initiative_data = res.initiative_data.L.map((el) => {
     let obj = {};
     obj.initiative_id = el.M.initiative_id.S;
     obj.prep_time = el.M.prep_time.BOOL;
@@ -440,13 +442,15 @@ async function addInitiativeDataToUser(cookies, body) {
     };
   }
 
-  if (await addInitiativeDataToUserDB(
-    user_id || user.user_id,
-    initiative_id,
-    prep_time,
-    duration,
-    timestamp()
-  )){
+  if (
+    await addInitiativeDataToUserDB(
+      user_id || user.user_id,
+      initiative_id,
+      prep_time,
+      duration,
+      timestamp()
+    )
+  ) {
     return { statusCode: 200 };
   }
 
@@ -467,41 +471,81 @@ async function addInitiative(cookies, body) {
     return { statusCode: 403 };
   }
 
-  addInitiativeDB(body.initiative_name, body.description, body.categories, body.leads);
+  await addInitiativeDB(
+    body.initiative_name,
+    body.picture,
+    body.description,
+    body.categories,
+    body.leads
+  );
   return { statusCode: 200 };
 }
 
-async function getInitiative(body){
+async function getInitiative(body) {
   let res = await getInitiativeDB(body.initiative_id);
   res.initiative_name = res.initiative_name.S;
   res.description = res.description.S;
-  res.categories = res.categories.L.map(el => el.S);
+  res.picture = res.picture.S;
+  res.categories = res.categories.L.map((el) => el.S);
   res.total_mins = parseInt(res.total_mins.N);
   res.total_participants = parseInt(res.total_participants.N);
-  res.leads = res.leads.L.map(el => el.S);
+  res.leads = res.leads.L.map((el) => el.S);
 
   return {
     statusCode: 200,
-    body: res
+    body: res,
   };
 }
 
-async function getAllInitiatives(){
+async function getAllInitiatives() {
   let res = await getAllInitiativesDB();
-  res.map(el => {
+  res.map((el) => {
     el.initiative_id = el.initiative_id.S;
     el.initiative_name = el.initiative_name.S;
     el.description = el.description.S;
-    el.categories = el.categories.L.map(el2 => el2.S);
+    el.picture = el.picture.S;
+    el.categories = el.categories.L.map((el2) => el2.S);
     el.total_mins = parseInt(el.total_mins.N);
     el.total_participants = parseInt(el.total_participants.N);
-    el.leads = el.leads.L.map(el2 => el2.S);
-  })
+    el.leads = el.leads.L.map((el2) => el2.S);
+  });
 
   return {
     statusCode: 200,
-    body: res
-  }
+    body: res,
+  };
+}
+
+async function batchGetNames(body) {
+  let res = await batchGetNamesDB(body.user_ids);
+  res = res.map((el) => {
+    return { name: el.name.S, user_id: el.user_id.S };
+  });
+  res = body.user_ids.map((el) => res.find((el2) => el2.user_id == el).name);
+
+  return {
+    statusCode: 200,
+    body: res,
+  };
+}
+
+async function batchGetInitiativeNames(body) {
+  let res = await batchGetInitiativeNamesDB(body.initiative_ids);
+  console.log(res)
+  res = res.map((el) => {
+    return {
+      initiative_name: el.initiative_name.S,
+      initiative_id: el.initiative_id.S,
+    };
+  });
+  res = body.initiative_ids.map(
+    (el) => res.find((el2) => el2.initiative_id == el).initiative_name
+  );
+
+  return {
+    statusCode: 200,
+    body: res,
+  };
 }
 
 module.exports = {
@@ -519,5 +563,7 @@ module.exports = {
   addInitiativeDataToUser,
   addInitiative,
   getInitiative,
-  getAllInitiatives
+  getAllInitiatives,
+  batchGetNames,
+  batchGetInitiativeNames,
 };
