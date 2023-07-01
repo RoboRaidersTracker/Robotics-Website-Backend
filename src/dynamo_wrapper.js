@@ -445,28 +445,45 @@ async function addInitiativeDataToUserDB(
   return true;
 }
 
-async function updateUserDB(user_id, data) {
-  let query = {
-    TableName: "team75_tracking_students",
-    Key: {
-      user_id: { S: user_id },
-    },
-    UpdateExpression: "SET",
-    ExpressionAttributeValues: {},
-    ExpressionAttributeNames: {},
-  };
+async function batchUpdateUsersDB(user_ids, data) {
+  var updateRequests = user_ids.map((user_id) => {
+    var query = {
+      TableName: "team75_tracking_students",
+      Key: {
+        user_id: { S: user_id },
+      },
+      UpdateExpression: "SET",
+      ExpressionAttributeValues: {},
+      ExpressionAttributeNames: {},
+    };
 
-  // Update expression attribute values
-  Object.entries(data).forEach(([key, value]) => {
-    query.UpdateExpression += ` #${key} = :${key},`;
-    query.ExpressionAttributeValues[`:${key}`] = { S: value };
-    query.ExpressionAttributeNames[`#${key}`] = key;
+    // Update expression attribute values
+    Object.entries(data).forEach(([key, value]) => {
+      query.UpdateExpression += ` #${key} = :${key},`;
+      query.ExpressionAttributeValues[`:${key}`] = { S: value };
+      query.ExpressionAttributeNames[`#${key}`] = key;
+    });
+
+    // Remove trailing comma
+    query.UpdateExpression = query.UpdateExpression.slice(0, -1);
+
+    return {
+      UpdateRequest: {
+        Key: query.Key,
+        UpdateExpression: query.UpdateExpression,
+        ExpressionAttributeValues: query.ExpressionAttributeValues,
+        ExpressionAttributeNames: query.ExpressionAttributeNames,
+      },
+    };
   });
 
-  // Remove trailing comma
-  query.UpdateExpression = query.UpdateExpression.slice(0, -1);
+  var batchParams = {
+    RequestItems: {
+      team75_tracking_students: updateRequests,
+    },
+  };
 
-  await ddb.send(new UpdateItemCommand(query));
+  await ddb.send(new BatchWriteItemCommand(batchParams));
 }
 
 // Delete functions
@@ -702,28 +719,45 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
   return res;
 }
 
-async function updateInitiativeDB(user_id, data) {
-  let query = {
-    TableName: "team75_tracking_initiatives",
-    Key: {
-      user_id: { S: user_id },
-    },
-    UpdateExpression: "SET",
-    ExpressionAttributeValues: {},
-    ExpressionAttributeNames: {},
-  };
+async function batchUpdateInitiativesDB(user_ids, data) {
+  var updateRequests = user_ids.map((user_id) => {
+    var query = {
+      TableName: "team75_tracking_initiatives",
+      Key: {
+        user_id: { S: user_id },
+      },
+      UpdateExpression: "SET",
+      ExpressionAttributeValues: {},
+      ExpressionAttributeNames: {},
+    };
 
-  // Update expression attribute values
-  Object.entries(data).forEach(([key, value]) => {
-    query.UpdateExpression += ` #${key} = :${key},`;
-    query.ExpressionAttributeValues[`:${key}`] = { S: value };
-    query.ExpressionAttributeNames[`#${key}`] = key;
+    // Update expression attribute values
+    Object.entries(data).forEach(([key, value]) => {
+      query.UpdateExpression += ` #${key} = :${key},`;
+      query.ExpressionAttributeValues[`:${key}`] = { S: value };
+      query.ExpressionAttributeNames[`#${key}`] = key;
+    });
+
+    // Remove trailing comma
+    query.UpdateExpression = query.UpdateExpression.slice(0, -1);
+
+    return {
+      UpdateRequest: {
+        Key: query.Key,
+        UpdateExpression: query.UpdateExpression,
+        ExpressionAttributeValues: query.ExpressionAttributeValues,
+        ExpressionAttributeNames: query.ExpressionAttributeNames,
+      },
+    };
   });
 
-  // Remove trailing comma
-  query.UpdateExpression = query.UpdateExpression.slice(0, -1);
+  var batchParams = {
+    RequestItems: {
+      team75_tracking_initiatives: updateRequests,
+    },
+  };
 
-  await ddb.send(new UpdateItemCommand(query));
+  await ddb.send(new BatchWriteItemCommand(batchParams));
 }
 
 // Delete functions
@@ -752,6 +786,67 @@ async function batchDeleteInitiativesDB(initiative_ids) {
   }
 }
 
+function packData(obj) {
+  const packedObj = {};
+
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      const value = obj[key];
+
+      // Handle different data types
+      if (value === null || value === undefined) {
+        packedObj[key] = { NULL: true };
+      } else if (typeof value === "string") {
+        packedObj[key] = { S: value };
+      } else if (typeof value === "number") {
+        packedObj[key] = { N: value.toString() };
+      } else if (typeof value === "boolean") {
+        packedObj[key] = { BOOL: value };
+      } else if (Array.isArray(value)) {
+        packedObj[key] = { L: value.map((item) => packData(item)) };
+      } else if (typeof value === "object") {
+        packedObj[key] = { M: packData(value) };
+      }
+    }
+  }
+
+  return packedObj;
+}
+
+function unpackData(data) {
+  const unpackedData = {};
+
+  for (const key in data) {
+    if (data.hasOwnProperty(key)) {
+      const value = data[key];
+
+      if (typeof value === "object") {
+        if (value.hasOwnProperty("N")) {
+          unpackedData[key] = parseInt(value["N"]);
+        } else if (value.hasOwnProperty("S")) {
+          unpackedData[key] = value["S"];
+        } else if (value.hasOwnProperty("BOOL")) {
+          unpackedData[key] = value["BOOL"];
+        } else if (value.hasOwnProperty("L")) {
+          var list_values = [];
+          for (const i in value["L"]) {
+            var itemValue = "";
+            for (const itemKey in value["L"][i]) {
+              itemValue += value["L"][i][itemKey]["S"];
+            }
+            list_values.push(itemValue);
+          }
+          unpackedData[key] = list_values;
+        } else if (value.hasOwnProperty("M")) {
+          unpackedData[key] = unpackData(value["M"]);
+        }
+      }
+    }
+  }
+
+  return unpackedData;
+}
+
 module.exports = {
   initDB,
   addSessionDB,
@@ -764,7 +859,7 @@ module.exports = {
   getUserInitiativeDataDB,
   batchGetNamesDB,
   addInitiativeDataToUserDB,
-  updateUserDB,
+  batchUpdateUsersDB,
   batchCleanUsersDB,
   batchDeleteUsersDB,
   addInitiativeDB,
@@ -772,6 +867,8 @@ module.exports = {
   getInitiativeDB,
   getAllInitiativesDB,
   batchGetInitiativeNamesDB,
-  updateInitiativeDB,
+  batchUpdateInitiativesDB,
   batchDeleteInitiativesDB,
+  packData,
+  unpackData,
 };
