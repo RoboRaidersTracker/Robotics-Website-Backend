@@ -446,8 +446,8 @@ async function addInitiativeDataToUserDB(
 }
 
 async function batchUpdateUsersDB(user_ids, data) {
-  var updateRequests = user_ids.map((user_id) => {
-    var query = {
+  let updateRequests = user_ids.map((user_id) => {
+    let query = {
       TableName: "team75_tracking_students",
       Key: {
         user_id: { S: user_id },
@@ -477,7 +477,7 @@ async function batchUpdateUsersDB(user_ids, data) {
     };
   });
 
-  var batchParams = {
+  let batchParams = {
     RequestItems: {
       team75_tracking_students: updateRequests,
     },
@@ -525,7 +525,6 @@ async function batchCleanUsersDB(user_ids) {
           profile_picture: user.profile_picture,
           initiative_mins: { N: "0" },
           initiative_data: { L: [] },
-          attendance: { L: [] },
           tags: user.tags,
           email: user.email,
         },
@@ -720,8 +719,8 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
 }
 
 async function batchUpdateInitiativesDB(user_ids, data) {
-  var updateRequests = user_ids.map((user_id) => {
-    var query = {
+  let updateRequests = user_ids.map((user_id) => {
+    let query = {
       TableName: "team75_tracking_initiatives",
       Key: {
         user_id: { S: user_id },
@@ -751,7 +750,7 @@ async function batchUpdateInitiativesDB(user_ids, data) {
     };
   });
 
-  var batchParams = {
+  let batchParams = {
     RequestItems: {
       team75_tracking_initiatives: updateRequests,
     },
@@ -828,9 +827,9 @@ function unpackData(data) {
         } else if (value.hasOwnProperty("BOOL")) {
           unpackedData[key] = value["BOOL"];
         } else if (value.hasOwnProperty("L")) {
-          var list_values = [];
+          let list_values = [];
           for (const i in value["L"]) {
-            var itemValue = "";
+            let itemValue = "";
             for (const itemKey in value["L"][i]) {
               itemValue += value["L"][i][itemKey]["S"];
             }

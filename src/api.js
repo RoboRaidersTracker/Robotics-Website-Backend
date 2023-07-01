@@ -11,7 +11,7 @@ const {
   getUserInitiativeDataDB,
   batchGetNamesDB, // Getting users on initiative's page
   addInitiativeDataToUserDB,
-  updateUserDB, // Made by @shravan
+  batchUpdateUsersDB, // Made by @shravan
   batchCleanUsersDB,
   batchDeleteUsersDB,
   addInitiativeDB,
@@ -19,7 +19,7 @@ const {
   getInitiativeDB,
   getAllInitiativesDB,
   batchGetInitiativeNamesDB, // Getting initiatives on user's page
-  updateInitiativeDB, // Made by @shravan
+  batchUpdateInitiativesDB, // Made by @shravan
   batchDeleteInitiativesDB,
 } = require("./dynamo_wrapper");
 const {
@@ -531,7 +531,7 @@ async function batchGetNames(body) {
 
 async function batchGetInitiativeNames(body) {
   let res = await batchGetInitiativeNamesDB(body.initiative_ids);
-  console.log(res)
+  console.log(res);
   res = res.map((el) => {
     return {
       initiative_name: el.initiative_name.S,
