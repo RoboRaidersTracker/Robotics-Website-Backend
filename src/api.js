@@ -42,8 +42,8 @@ const maxInitiativeLogDuration = 60 * 10;
 
 // Session management
 let user_cache = [];
-const expireMins = 60;
-const databaseCleanRateMins = 60 * 24 * 3;
+const expireMins = 90;
+const databaseCleanRateMins = 60 * 24;
 let lastDatabaseClean = timestamp();
 
 function timestamp() {
