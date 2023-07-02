@@ -173,7 +173,10 @@ async function loginClient(origin, body) {
       body: {
         message: "Success!",
         session_token: session_token,
+        timestamp: currTime,
         user_id: user.user_id.S,
+        department: user.department_name.S,
+        tags: user.tags.L.map((el) => el.S),
       },
     };
   } catch (error) {
