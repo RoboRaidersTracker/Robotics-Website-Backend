@@ -689,6 +689,9 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
     initiative_ids = [initiative_ids];
   }
 
+  // Remove duplicates
+  initiative_ids = [...new Set(initiative_ids)]
+
   let keyItems = [];
 
   initiative_ids.forEach((initiative_id) => {
