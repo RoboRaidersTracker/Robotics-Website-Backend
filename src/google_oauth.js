@@ -33,7 +33,6 @@ async function getClientID(tokens, oauth2Client) {
   });
 
   return {
-    id: response.data.resourceName.split("/")[1],
     name: response.data.names[0].displayName,
     email: response.data.emailAddresses[0].value,
     photo: response.data.photos[0].url,
@@ -67,7 +66,6 @@ async function getAllClientIDs(tokens, oauth2Client, searches) {
 
   return data.map((res) => {
     return {
-      id: res.resourceName.split("/")[1],
       name: res.names[0].displayName,
       email: res.emailAddresses[0].value,
       photo: res.photos[0].url,
