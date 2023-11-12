@@ -13,10 +13,11 @@ const {
 const uuid_v1 = require("uuid").v1;
 
 let ddb;
-try {
-  ddb = new DynamoDB(require("./local.json"));
-} catch (error) {
+if (process.env.cloud) {
   ddb = new DynamoDB({ region: "us-east-1" });
+} else {
+  // Keys will vary per device (set by NoSQL Workbench)
+  ddb = new DynamoDB(require("./local.json"));
 }
 
 const tables = {
@@ -53,7 +54,7 @@ async function initSampleData() {
       "Programming",
       ["mentor", "student"]
     );
-  } catch {}
+  } catch { }
 }
 
 /* ----- Session Management ----- */
@@ -289,7 +290,6 @@ async function getUserInitiativeDataDB(user_id) {
   };
 
   let res = await ddb.send(new GetItemCommand(query));
-  // console.log(res)
 
   return res.Item;
 }
@@ -319,19 +319,19 @@ async function batchGetNamesDB(user_ids) {
     res = [
       ...res,
       ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
-        "team75_tracking_students"
+      "team75_tracking_students"
       ],
     ];
   }
   return res;
 }
-
 // Update functions
 async function addInitiativeDataToUserDB(
   user_id,
   initiative_id,
   prep_time,
   duration,
+  start_time,
   timestamp
 ) {
   let leads = await getInitiativeLeadsDB(initiative_id);
@@ -350,6 +350,10 @@ async function addInitiativeDataToUserDB(
 
   if (typeof duration === "number") {
     duration = duration.toString();
+  }
+
+  if (typeof start_time === "number") {
+    start_time = start_time.toString();
   }
 
   if (typeof timestamp === "number") {
@@ -378,6 +382,9 @@ async function addInitiativeDataToUserDB(
               },
               duration: {
                 N: duration,
+              },
+              start_time: {
+                N: start_time,
               },
               timestamp: {
                 N: timestamp,
@@ -413,6 +420,9 @@ async function addInitiativeDataToUserDB(
               duration: {
                 N: duration,
               },
+              start_time: {
+                N: start_time,
+              },
               timestamp: {
                 N: timestamp,
               },
@@ -434,7 +444,6 @@ async function addInitiativeDataToUserDB(
     };
   }
 
-  console.log("Oop")
   ddb.send(new UpdateItemCommand(query));
   return true;
 }
@@ -707,7 +716,7 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
     res = [
       ...res,
       ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
-        "team75_tracking_initiatives"
+      "team75_tracking_initiatives"
       ],
     ];
   }

@@ -44,6 +44,7 @@ const maxInitiativeLogDuration = 60 * 10;
 let user_cache = [];
 const expireMins = 90;
 const databaseCleanRateMins = 60 * 24;
+const daysToLog = 14
 let lastDatabaseClean = timestamp();
 
 function timestamp() {
@@ -66,6 +67,7 @@ async function cleanCacheAndDatabase() {
 
   if (lastDatabaseClean + databaseCleanRateMins <= timestamp()) {
     cleanSessionsDB(expireMins, timestamp());
+    lastDatabaseClean = timestamp();
   }
 }
 
@@ -89,7 +91,7 @@ async function checkLogin(cookies) {
   let res = user_cache.find(
     (el) => {
       return el.session_token == cookies["session-token"] &&
-      el.timestamp + expireMins > timestamp()
+        el.timestamp + expireMins > timestamp()
     }
   );
 
@@ -408,6 +410,7 @@ async function getUserInitiativeData(cookies, body) {
     obj.initiative_id = el.M.initiative_id.S;
     obj.prep_time = el.M.prep_time.BOOL;
     obj.duration = el.M.duration.N;
+    obj.start_time = el.M.start_time.N;
     obj.timestamp = el.M.timestamp.N;
     return obj;
   });
@@ -426,7 +429,7 @@ async function addInitiativeDataToUser(cookies, body) {
     };
   }
 
-  let { user_id, initiative_id, prep_time, duration } = body;
+  let { user_id, initiative_id, prep_time, duration, start_time } = body;
 
   // Check if user has access
   let user = user_cache.find(
@@ -439,7 +442,11 @@ async function addInitiativeDataToUser(cookies, body) {
     };
   }
 
-  if (duration > maxInitiativeLogDuration) {
+  if (
+    duration > maxInitiativeLogDuration
+    || start_time > timestamp()
+    || start_time < timestamp() - daysToLog * 24 * 60
+  ) {
     return {
       statusCode: 400,
     };
@@ -451,6 +458,7 @@ async function addInitiativeDataToUser(cookies, body) {
       initiative_id,
       prep_time,
       duration,
+      start_time,
       timestamp()
     )
   ) {
