@@ -47,9 +47,8 @@ async function initDB() {
 async function initSampleData() {
   try {
     await batchAddUsersDB(
-      "114409764148443206366",
-      "Eshaan Debnath",
       "eshaandebnath@gmail.com",
+      "Eshaan Debnath",
       "https://lh3.googleusercontent.com/a/AAcHTtfsmybpx59Z8dwUWN1saEu0Cm8Pwsl_h_PKns9e5w=s100",
       "Programming",
       ["mentor", "student"]
@@ -154,26 +153,24 @@ async function cleanSessionsDB(expireMins, currTime) {
 /* ----- Users ----- */
 // Add functions
 async function batchAddUsersDB(
-  g_ids,
-  g_names,
   g_emails,
+  g_names,
   g_photos,
   department_names,
   tags_s
 ) {
-  if (typeof g_ids === "string" || typeof g_ids === "number") {
-    g_ids = [g_ids];
-    g_names = [g_names];
+  if (typeof g_emails === "string") {
     g_emails = [g_emails];
+    g_names = [g_names];
     g_photos = [g_photos];
     department_names = [department_names];
     tags_s = [tags_s];
   }
 
-  let len = g_ids.length;
+  let len = g_emails.length;
   if (
-    g_names.length != len ||
     g_emails.length != len ||
+    g_names.length != len ||
     g_photos.length != len ||
     department_names.length != len ||
     tags_s.length != len
@@ -191,7 +188,7 @@ async function batchAddUsersDB(
       return { S: el };
     });
 
-    if ((await loginUserDB(g_ids[i])) !== undefined) {
+    if ((await loginUserDB(g_emails[i])) !== undefined) {
       // FIX - update instead?
       continue;
     }
@@ -202,7 +199,7 @@ async function batchAddUsersDB(
       PutRequest: {
         Item: {
           user_id: { S: user_id },
-          google_id: { S: g_ids[i] },
+          email: { S: g_emails[i] },
           name: { S: g_names[i] },
           department_name: { S: department_names[i] },
           profile_picture: { S: g_photos[i] },
@@ -210,7 +207,6 @@ async function batchAddUsersDB(
           initiative_data: { L: [] },
           attendance: { L: [] },
           tags: { L: tags_s[i] },
-          email: { S: g_emails[i] },
         },
       },
     });
@@ -225,19 +221,15 @@ async function batchAddUsersDB(
 }
 
 // Get functions
-async function loginUserDB(g_id) {
-  if (typeof g_id === "number") {
-    g_id = g_id.toString();
-  }
-
+async function loginUserDB(email) {
   let query = {
     TableName: "team75_tracking_students",
     ScanIndexForward: true,
     IndexName: "SecureLogin",
-    KeyConditionExpression: "google_id = :google_id",
+    KeyConditionExpression: "email = :email",
     ExpressionAttributeValues: {
-      ":google_id": {
-        S: g_id,
+      ":email": {
+        S: email,
       },
     },
   };
@@ -297,6 +289,7 @@ async function getUserInitiativeDataDB(user_id) {
   };
 
   let res = await ddb.send(new GetItemCommand(query));
+  // console.log(res)
 
   return res.Item;
 }
@@ -441,6 +434,7 @@ async function addInitiativeDataToUserDB(
     };
   }
 
+  console.log("Oop")
   ddb.send(new UpdateItemCommand(query));
   return true;
 }
@@ -506,7 +500,7 @@ async function batchCleanUsersDB(user_ids) {
             },
           },
           ProjectionExpression:
-            "email,#name,profile_picture,department_name,tags,google_id",
+            "email,#name,profile_picture,department_name,tags",
           ExpressionAttributeNames: {
             "#name": "name",
           },
@@ -519,7 +513,6 @@ async function batchCleanUsersDB(user_ids) {
         Item: {
           user_id: { S: user_id },
           attendance: { L: [] },
-          google_id: user.google_id,
           name: user.name,
           department_name: user.department_name,
           profile_picture: user.profile_picture,
@@ -633,7 +626,7 @@ async function addInitiativeDB(
     },
   };
 
-  ddb.send(new PutItemCommand(query));
+  await ddb.send(new PutItemCommand(query));
 }
 
 async function getInitiativeLeadsDB(initiative_id) {

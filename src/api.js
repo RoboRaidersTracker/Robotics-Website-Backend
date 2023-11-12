@@ -87,9 +87,10 @@ async function checkLogin(cookies) {
 
   // Check local cache
   let res = user_cache.find(
-    (el) =>
-      el.session_token == cookies["session-token"] &&
-      el.issued + expireMins > timestamp()
+    (el) => {
+      return el.session_token == cookies["session-token"] &&
+      el.timestamp + expireMins > timestamp()
+    }
   );
 
   if (res != undefined) {
@@ -135,7 +136,7 @@ async function loginClient(origin, body) {
     const g_data = await getClientID(tokens, oauth2Client);
 
     let session_token = newSession(),
-      user = await loginUserDB(g_data.id),
+      user = await loginUserDB(g_data.email),
       currTime = timestamp();
 
     // Save to local cache
@@ -290,8 +291,7 @@ async function batchAddStudents(cookies, origin, body) {
     );
     console.log(g_data);
 
-    let g_ids = g_data.map((el) => el.id),
-      g_names = g_data.map((el) => el.name),
+    let g_names = g_data.map((el) => el.name),
       g_emails = g_data.map((el) => el.email),
       g_photos = g_data.map((el) => el.photo),
       department_names = body.department || body.departments,
@@ -316,9 +316,8 @@ async function batchAddStudents(cookies, origin, body) {
     }
 
     await batchAddUsersDB(
-      g_ids,
-      g_names,
       g_emails,
+      g_names,
       g_photos,
       department_names,
       tags_s
@@ -433,6 +432,7 @@ async function addInitiativeDataToUser(cookies, body) {
   let user = user_cache.find(
     (el) => el.session_token == cookies["session-token"]
   );
+
   if (user_id && user.user_id != user_id) {
     return {
       statusCode: 403,

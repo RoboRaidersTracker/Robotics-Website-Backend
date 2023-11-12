@@ -52,7 +52,7 @@ async function route(event) {
 
     if (path == "/" && method == "GET") {
       response = await homepage();
-    } else if (path == "/pre-auth" && method == "POST") {
+    } else if (path == "/pre-auth" && ["GET", "POST"].includes(method)) {
       response = await checkLogin(cookies);
     } else if (path == "/auth" && method == "POST") {
       response = await loginClient(origin, body);

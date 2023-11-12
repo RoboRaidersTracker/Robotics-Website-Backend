@@ -19,6 +19,7 @@
 <div class="delete-users"><button>Delete Users</button></div>
 <div class="get-initiative"><button>Get Initiative</button></div>
 <div class="get-initiatives"><button>Get Initiatives</button></div>
+<div class="create-initiative"><button>Create Initiative</button></div>
 
 <script>
 // function setProfile(profileName, profilePicURL){
@@ -69,7 +70,7 @@ function getUserData(){
       "Content-Type": "application/json",
       "X-Requested-With": "javascript-fetch"
     },
-    body: JSON.stringify({"user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa"})
+    body: JSON.stringify({"user_id": "10be85a0-8112-11ee-8e42-d56be3412886"})
   }).then(
     data => print(data),
     err => console.log(err)
@@ -83,7 +84,7 @@ function getUserInitiatives(){
       "Content-Type": "application/json",
       "X-Requested-With": "javascript-fetch"
     },
-    body: JSON.stringify({"user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa"})
+    body: JSON.stringify({"user_id": "10be85a0-8112-11ee-8e42-d56be3412886"})
   }).then(
     data => print(data),
     err => console.log(err)
@@ -98,10 +99,10 @@ function logHours(){
       "X-Requested-With": "javascript-fetch"
     },
     body: JSON.stringify({
-      "user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa",
-      "initiative_id": "0ecda500-ff53-11ed-8e9f-339a46b4c7b3",
+      "user_id": "10be85a0-8112-11ee-8e42-d56be3412886",
+      "initiative_id": "9fa9b560-8120-11ee-b4db-356019c52329",
       "prep_time": false,
-      "duration": 500
+      "duration": 200
     })
   }).then(
     data => print(data),
@@ -124,7 +125,7 @@ async function addUsers(){
       "searches": ["Eshaan Debnath debnathe@htps.us", "Adhithi Rajesh rajeshad@htps.us"]
     })
   }).then(
-    data => print(data),
+    data => console.log(data),
     err => console.log(err)
   )
 }
@@ -152,7 +153,7 @@ function cleanUsers(){
       "X-Requested-With": "javascript-fetch"
     },
     body: JSON.stringify({
-      "user_id": "56d26180-ff2e-11ed-ac97-659b7a975caa"
+      "user_id": "10be85a0-8112-11ee-8e42-d56be3412886"
     })
   }).then(
     data => print(data),
@@ -169,8 +170,8 @@ function deleteUsers(){
     },
     body: JSON.stringify({
       "user_ids": [
-        "ff840150-1232-11ee-bc62-0f834f51d39a",
-        "ff8030c0-1232-11ee-bc62-0f834f51d39a"
+        "d5de8250-8120-11ee-9c58-df943c9a7303",
+        "d5d77d70-8120-11ee-9c58-df943c9a7303"
       ]
     })
   }).then(
@@ -187,7 +188,7 @@ function getInitiative(){
       "X-Requested-With": "javascript-fetch"
     },
     body: JSON.stringify({
-      "initiative_id": "0ecda500-ff53-11ed-8e9f-339a46b4c7b3"
+      "initiative_id": "9fa9b560-8120-11ee-b4db-356019c52329"
     })
   }).then(
     data => print(data),
@@ -208,8 +209,29 @@ function getInitiatives(){
   )
 }
 
+function createInitiative(){
+  fetch("./add-initiative", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "javascript-fetch"
+    },
+    body: JSON.stringify({
+      "initiative_name": "BoroBlast",
+      "picture": "https://qph.cf2.quoracdn.net/main-qimg-0157e769161928e61eaab97433db1458.webp",
+      "description": ":3",
+      "categories": ["STEM"],
+      "leads": ["10be85a0-8112-11ee-8e42-d56be3412886"],
+    })
+  }).then(
+    data => print(data),
+    err => console.log(err)
+  )
+}
+
 // Send custom headers for authentication
-fetch("./auth", {
+fetch("./pre-auth", {
+  method: "POST",
   headers: {
     "Content-Type": "application/json",
     "X-Requested-With": "javascript-fetch"
@@ -245,6 +267,8 @@ document.getElementsByClassName("get-initiative")[0]
   .children[0].addEventListener("click", getInitiative);
 document.getElementsByClassName("get-initiatives")[0]
   .children[0].addEventListener("click", getInitiatives);
+document.getElementsByClassName("create-initiative")[0]
+  .children[0].addEventListener("click", createInitiative);
 
 async function print(data){
   if (data.status == 200) console.log(await data.json());
