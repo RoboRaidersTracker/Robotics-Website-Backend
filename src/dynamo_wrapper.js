@@ -17,7 +17,13 @@ if (process.env.cloud) {
   ddb = new DynamoDB({ region: "us-east-1" });
 } else {
   // Keys will vary per device (set by NoSQL Workbench)
-  ddb = new DynamoDB(require("./local.json"));
+  let localData = require("./local.json");
+  const creds = (({
+    endpoint, aws_access_key_id, aws_secret_access_key, region
+  }) => ({
+    endpoint, aws_access_key_id, aws_secret_access_key, region
+  }))(object);
+  ddb = new DynamoDB({ creds });
 }
 
 const tables = {

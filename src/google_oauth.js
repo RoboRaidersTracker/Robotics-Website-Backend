@@ -1,14 +1,25 @@
 const { google } = require("googleapis");
 let origin;
 
+let google_client_id, google_client_secret;
+if (process.env.cloud) {
+  google_client_id = process.env.google_client_id;
+  google_client_secret = process.env.google_client_secret;
+} else {
+  // Keys will vary per device (set by NoSQL Workbench)
+  let localData = require("./local.json");
+  google_client_id = localData.google_client_id;
+  google_client_secret = localData.google_client_secret;
+}
+
 function setOrigin(requestOrigin) {
   origin = requestOrigin;
 }
 
 const newClient = () =>
   new google.auth.OAuth2(
-    "672955273389-bc25j23ds73qgp7ukroaloutv2a22qjv.apps.googleusercontent.com",
-    "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",
+    google_client_id,
+    google_client_secret,
     origin
   );
 

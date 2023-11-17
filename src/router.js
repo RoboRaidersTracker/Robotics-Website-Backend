@@ -44,8 +44,6 @@ async function route(event) {
       : JSON.parse(event.body);
 
   try {
-    cleanCacheAndDatabase();
-
     if (method == "POST" && !cookies["session-token"] && body?.session_token) {
       cookies["session-token"] = body.session_token;
     }
@@ -86,6 +84,8 @@ async function route(event) {
       response = await batchGetInitiativeNames(body);
       // } else if (path == "/delete-initiatives" && method == "POST") {
       //   response = await getUserOverview(cookies, body);
+    } else if (path == "/clear-cache") {
+      response = cleanCacheAndDatabase();
     } else if (path == "/force-update") {
       await forceInit();
       response = {
