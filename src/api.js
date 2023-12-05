@@ -482,7 +482,7 @@ async function addInitiative(cookies, body) {
     body.picture,
     body.description,
     body.categories,
-    body.leads
+    [...new Set(body.leads)]
   );
   return { statusCode: 200 };
 }
