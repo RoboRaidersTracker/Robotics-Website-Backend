@@ -19,10 +19,16 @@ if (process.env.cloud) {
   // Keys will vary per device (set by NoSQL Workbench)
   let localData = require("./local.json");
   const creds = (({
-    endpoint, aws_access_key_id, aws_secret_access_key, region
+    endpoint,
+    aws_access_key_id,
+    aws_secret_access_key,
+    region,
   }) => ({
-    endpoint, aws_access_key_id, aws_secret_access_key, region
-  }))(object);
+    endpoint,
+    aws_access_key_id,
+    aws_secret_access_key,
+    region,
+  }))(localData);
   ddb = new DynamoDB({ creds });
 }
 
@@ -60,7 +66,7 @@ async function initSampleData() {
       "Programming",
       ["mentor", "student"]
     );
-  } catch { }
+  } catch {}
 }
 
 /* ----- Session Management ----- */
@@ -159,27 +165,11 @@ async function cleanSessionsDB(expireMins, currTime) {
 
 /* ----- Users ----- */
 // Add functions
-async function batchAddUsersDB(
-  g_emails,
-  g_names,
-  g_photos,
-  department_names,
-  tags_s
-) {
-  if (typeof g_emails === "string") {
-    g_emails = [g_emails];
-    g_names = [g_names];
-    g_photos = [g_photos];
-    department_names = [department_names];
-    tags_s = [tags_s];
-  }
-
-  let len = g_emails.length;
+async function batchAddUsersDB(emails, names, departments, tags_s) {
+  let len = emails.length;
   if (
-    g_emails.length != len ||
-    g_names.length != len ||
-    g_photos.length != len ||
-    department_names.length != len ||
+    names.length != len ||
+    departments.length != len ||
     tags_s.length != len
   ) {
     return false;
@@ -195,7 +185,7 @@ async function batchAddUsersDB(
       return { S: el };
     });
 
-    if ((await loginUserDB(g_emails[i])) !== undefined) {
+    if ((await loginUserDB(emails[i])) !== undefined) {
       // FIX - update instead?
       continue;
     }
@@ -206,10 +196,9 @@ async function batchAddUsersDB(
       PutRequest: {
         Item: {
           user_id: { S: user_id },
-          email: { S: g_emails[i] },
-          name: { S: g_names[i] },
-          department_name: { S: department_names[i] },
-          profile_picture: { S: g_photos[i] },
+          email: { S: emails[i] },
+          name: { S: names[i] },
+          department_name: { S: departments[i] },
           initiative_mins: { N: "0" },
           initiative_data: { L: [] },
           attendance: { L: [] },
@@ -256,7 +245,7 @@ async function getUserOverviewDB(user_id) {
       },
     },
     ProjectionExpression:
-      "user_id,email,#name,profile_picture,department_name,initiative_mins,tags",
+      "user_id,email,#name,department_name,initiative_mins,tags",
     ExpressionAttributeNames: {
       "#name": "name",
     },
@@ -272,7 +261,7 @@ async function getAllUsersOverviewDB() {
     TableName: "team75_tracking_students",
     ConsistentRead: true,
     ProjectionExpression:
-      "user_id,email,#name,profile_picture,department_name,initiative_mins,tags",
+      "user_id,email,#name,department_name,initiative_mins,tags",
     ExpressionAttributeNames: {
       "#name": "name",
     },
@@ -325,7 +314,7 @@ async function batchGetNamesDB(user_ids) {
     res = [
       ...res,
       ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
-      "team75_tracking_students"
+        "team75_tracking_students"
       ],
     ];
   }
@@ -514,8 +503,7 @@ async function batchCleanUsersDB(user_ids) {
               S: user_id,
             },
           },
-          ProjectionExpression:
-            "email,#name,profile_picture,department_name,tags",
+          ProjectionExpression: "email,#name,department_name,tags",
           ExpressionAttributeNames: {
             "#name": "name",
           },
@@ -530,7 +518,6 @@ async function batchCleanUsersDB(user_ids) {
           attendance: { L: [] },
           name: user.name,
           department_name: user.department_name,
-          profile_picture: user.profile_picture,
           initiative_mins: { N: "0" },
           initiative_data: { L: [] },
           tags: user.tags,
@@ -698,7 +685,7 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
   }
 
   // Remove duplicates
-  initiative_ids = [...new Set(initiative_ids)]
+  initiative_ids = [...new Set(initiative_ids)];
 
   let keyItems = [];
 
@@ -722,7 +709,7 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
     res = [
       ...res,
       ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
-      "team75_tracking_initiatives"
+        "team75_tracking_initiatives"
       ],
     ];
   }

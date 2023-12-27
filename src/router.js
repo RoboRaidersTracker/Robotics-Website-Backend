@@ -63,7 +63,7 @@ async function route(event) {
     } else if (path == "/user-initiatives" && method == "POST") {
       response = await getUserInitiativeData(cookies, body);
     } else if (path == "/add-users" && method == "POST") {
-      response = await batchAddStudents(cookies, origin, body);
+      response = await batchAddStudents(cookies, body);
       // } else if (path == "/update-user" && method == "POST") {
       //   response = await getUserOverview(cookies, body);
     } else if (path == "/log-hours" && method == "POST") {

@@ -214,7 +214,6 @@ async function getUserOverview(cookies, body) {
   res.user_id = response.user_id.S;
   res.department_name = response.department_name.S;
   res.name = response.name.S;
-  res.profile_picture = response.profile_picture.S;
   res.email = response.email.S;
   res.tags = response.tags.L.map((el) => el.S);
 
@@ -248,7 +247,6 @@ async function getAllUsersOverview(cookies, body) {
     res.user_id = res.user_id.S;
     res.department_name = res.department_name.S;
     res.name = res.name.S;
-    res.profile_picture = res.profile_picture.S;
     res.email = res.email.S;
     res.tags = res.tags.L.map((el) => el.S);
   });
@@ -259,7 +257,7 @@ async function getAllUsersOverview(cookies, body) {
   };
 }
 
-async function batchAddStudents(cookies, origin, body) {
+async function batchAddStudents(cookies, body) {
   try {
     // Check user + update local cache
     if ((await checkLogin(cookies)).statusCode != 200) {
@@ -278,45 +276,33 @@ async function batchAddStudents(cookies, origin, body) {
       };
     }
 
-    setOrigin(origin);
-    const { code } = body;
-    const { tokens, oauth2Client } = await getTokens(code);
-    const g_data = await getAllClientIDs(
-      tokens,
-      oauth2Client,
-      body.searches || [body.search]
-    );
-    console.log(g_data);
+    let { names, emails, departments, tags_s } = body;
+    // let g_names = g_data.map((el) => el.name),
+    //   g_emails = body.department || body.departments,
+    //   emails = body.emails,
+    //   department_names = body.departments,
+    //   tags_s = body.tags_s;
 
-    let g_names = g_data.map((el) => el.name),
-      g_emails = g_data.map((el) => el.email),
-      g_photos = g_data.map((el) => el.photo),
-      department_names = body.department || body.departments,
-      tags_s = body.tags || body.tags_s;
-
-    if (typeof department_names === "string") {
-      department_names = new Array(g_data.length).fill(department_names);
-    }
-
-    if (department_names.length != g_data.length) {
+    if (!(
+      Array.isArray(names) && Array.isArray(emails) && Array.isArray(departments) && Array.isArray(tags_s)
+    )) {
       throw new Error(
-        "Department name list and user list are different sizes."
+        "Inputs must be arrays of equal size."
       );
     }
 
-    if (typeof tags_s === "string") {
-      tags_s = new Array(g_data.length).fill([tags_s]);
-    }
+    let lenArr = emails.length;
 
-    if (tags_s.length != g_data.length) {
-      throw new Error("Tag list and user list are different sizes.");
+    if (names.length != lenArr || departments.length != lenArr || tags_s.length != lenArr) {
+      throw new Error(
+        "Inputs must be arrays of equal size."
+      );
     }
 
     await batchAddUsersDB(
-      g_emails,
-      g_names,
-      g_photos,
-      department_names,
+      emails,
+      names,
+      departments,
       tags_s
     );
 
