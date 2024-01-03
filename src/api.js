@@ -1,38 +1,33 @@
 const { readFileSync } = require("fs");
 const {
-  initDB,
-  addSessionDB,
-  findSessionDB,
-  cleanSessionsDB,
-  batchAddUsersDB,
-  loginUserDB,
-  getUserOverviewDB,
-  getAllUsersOverviewDB,
-  getUserInitiativeDataDB,
-  batchGetNamesDB, // Getting users on initiative's page
-  addInitiativeDataToUserDB,
-  batchUpdateUsersDB, // Made by @shravan
-  batchCleanUsersDB,
-  batchDeleteUsersDB,
-  addInitiativeDB,
-  // getInitiativeLeadsDB,
-  getInitiativeDB,
-  getAllInitiativesDB,
-  batchGetInitiativeNamesDB, // Getting initiatives on user's page
-  batchUpdateInitiativesDB, // Made by @shravan
-  batchDeleteInitiativesDB,
+	initDB,
+	addSessionDB,
+	findSessionDB,
+	cleanSessionsDB,
+	batchAddUsersDB,
+	loginUserDB,
+	getUserOverviewDB,
+	getAllUsersOverviewDB,
+	getUserInitiativeDataDB,
+	batchGetNamesDB, // Getting users on initiative's page
+	addInitiativeDataToUserDB,
+	batchUpdateUsersDB, // Made by @shravan
+	batchCleanUsersDB,
+	batchDeleteUsersDB,
+	addInitiativeDB,
+	// getInitiativeLeadsDB,
+	getInitiativeDB,
+	getAllInitiativesDB,
+	batchGetInitiativeNamesDB, // Getting initiatives on user's page
+	batchUpdateInitiativesDB, // Made by @shravan
+	batchDeleteInitiativesDB,
 } = require("./dynamo_wrapper");
-const {
-  setOrigin,
-  getTokens,
-  getClientID,
-  getAllClientIDs,
-} = require("./google_oauth");
+const { setOrigin, getTokens, getClientID } = require("./google_oauth");
 const newSession = () =>
-  require("randomstring").generate({
-    length: 20,
-    charset: "alphanumeric",
-  });
+	require("randomstring").generate({
+		length: 20,
+		charset: "alphanumeric",
+	});
 
 // Home page
 const pageCode = readFileSync("./src/page.html", "utf-8");
@@ -43,519 +38,574 @@ const maxInitiativeLogDuration = 60 * 10;
 // Session management
 let user_cache = [];
 const expireMins = 90;
-const daysToLog = 14
+const daysToLog = 14;
 
 function timestamp() {
-  return Math.floor(
-    (new Date() - new Date("Jan 1 2020 00:00:00 GMT")) / 1000 / 60
-  );
+	return Math.floor(
+		(new Date() - new Date("Jan 1 2020 00:00:00 GMT")) / 1000 / 60,
+	);
 }
 
 async function forceInit() {
-  initDB();
+	initDB();
 }
 
 async function cleanCacheAndDatabase() {
-  for (let i = user_cache.length - 1; i >= 0; i--) {
-    if (user_cache[i].timestamp + expireMins <= timestamp()) {
-      user_cache = user_cache.slice(i + 1);
-      return;
-    }
-  }
+	for (let i = user_cache.length - 1; i >= 0; i--) {
+		if (user_cache[i].timestamp + expireMins <= timestamp()) {
+			user_cache = user_cache.slice(i + 1);
+			return;
+		}
+	}
 
-  cleanSessionsDB(expireMins, timestamp());
+	cleanSessionsDB(expireMins, timestamp());
 }
 
 /* ----- API Functions ----- */
 async function homepage() {
-  return {
-    statusCode: 200,
-    headers: { "Content-Type": "text/html" },
-    body: pageCode,
-  };
+	return {
+		statusCode: 200,
+		headers: { "Content-Type": "text/html" },
+		body: pageCode,
+	};
 }
 
 async function checkLogin(cookies) {
-  if (cookies["session-token"] == undefined) {
-    return {
-      statusCode: 404,
-    };
-  }
+	if (cookies["session-token"] == undefined) {
+		return {
+			statusCode: 404,
+		};
+	}
 
-  // Check local cache
-  let res = user_cache.find(
-    (el) => {
-      return el.session_token == cookies["session-token"] &&
-        el.timestamp + expireMins > timestamp()
-    }
-  );
+	// Check local cache
+	let res = user_cache.find((el) => {
+		return (
+			el.session_token == cookies["session-token"] &&
+			el.timestamp + expireMins > timestamp()
+		);
+	});
 
-  if (res != undefined) {
-    return {
-      statusCode: 200,
-      body: { message: "Success!", user_id: user_cache.user_id },
-    };
-  }
+	if (res != undefined) {
+		return {
+			statusCode: 200,
+			body: { message: "Success!", user_id: user_cache.user_id },
+		};
+	}
 
-  // Check database
-  let session = await findSessionDB(cookies["session-token"]);
+	// Check database
+	let session = await findSessionDB(cookies["session-token"]);
 
-  if (session != undefined) {
-    let session_timestamp = parseInt(session.timestamp.N);
-    if (session_timestamp + expireMins > timestamp()) {
-      // Update local cache
-      user_cache.push({
-        session_token: session.session_token.S,
-        timestamp: session_timestamp,
-        user_id: session.user_id.S,
-        department: session.department_name.S,
-        tags: session.tags.L.map((el) => el.S),
-      });
+	if (session != undefined) {
+		let session_timestamp = parseInt(session.timestamp.N);
+		if (session_timestamp + expireMins > timestamp()) {
+			// Update local cache
+			user_cache.push({
+				session_token: session.session_token.S,
+				timestamp: session_timestamp,
+				user_id: session.user_id.S,
+				department: session.department_name.S,
+				tags: session.tags.L.map((el) => el.S),
+			});
 
-      return {
-        statusCode: 200,
-        body: { message: "Success!", user_id: user_cache.user_id },
-      };
-    }
-  }
+			return {
+				statusCode: 200,
+				body: { message: "Success!", user_id: user_cache.user_id },
+			};
+		}
+	}
 
-  // If both fail, throw error
-  return {
-    statusCode: 404,
-  };
+	// If both fail, throw error
+	return {
+		statusCode: 404,
+	};
 }
 
 async function loginClient(origin, body) {
-  try {
-    setOrigin(origin);
-    const { code } = body;
-    const { tokens, oauth2Client } = await getTokens(code);
-    const g_data = await getClientID(tokens, oauth2Client);
+	try {
+		setOrigin(origin);
+		const { code } = body;
+		const { tokens, oauth2Client } = await getTokens(code);
+		const g_data = await getClientID(tokens, oauth2Client);
 
-    let session_token = newSession(),
-      user = await loginUserDB(g_data.email),
-      currTime = timestamp();
+		let session_token = newSession();
+		let user = await loginUserDB(g_data.email);
+		let currTime = timestamp();
 
-    // Save to local cache
-    user_cache.push({
-      session_token: session_token,
-      timestamp: currTime,
-      user_id: user.user_id.S,
-      department: user.department_name.S,
-      tags: user.tags.L.map((el) => el.S),
-    });
+		// Save to local cache
+		user_cache.push({
+			session_token: session_token,
+			timestamp: currTime,
+			user_id: user.user_id.S,
+			department: user.department_name.S,
+			tags: user.tags.L.map((el) => el.S),
+		});
 
-    // Save to database
-    addSessionDB(
-      session_token,
-      currTime,
-      user.user_id.S,
-      user.department_name.S,
-      user.tags.L.map((el) => el.S)
-    );
+		// Save to database
+		addSessionDB(
+			session_token,
+			currTime,
+			user.user_id.S,
+			user.department_name.S,
+			user.tags.L.map((el) => el.S),
+		);
 
-    // Add user
-    // addUser(g_data.id, g_data.name, g_data.email, g_data.photo, "mentor");
+		// Add user
+		// addUser(g_data.id, g_data.name, g_data.email, g_data.photo, "mentor");
 
-    let expireTime = new Date();
-    expireTime.setSeconds(
-      expireTime.getSeconds() + Math.floor(expireMins * 60)
-    );
-    expireTime = expireTime.toUTCString();
+		let expireTime = new Date();
+		expireTime.setSeconds(
+			expireTime.getSeconds() + Math.floor(expireMins * 60),
+		);
+		expireTime = expireTime.toUTCString();
 
-    return {
-      statusCode: 200,
-      headers: {
-        "Set-Cookie": `session-token=${session_token}; Expires=${expireTime}; Path=/; SameSite=None; Secure;`,
-      },
-      body: {
-        message: "Success!",
-        session_token: session_token,
-        timestamp: currTime,
-        user_id: user.user_id.S,
-        department: user.department_name.S,
-        tags: user.tags.L.map((el) => el.S),
-      },
-    };
-  } catch (error) {
-    console.log(error);
-    return {
-      statusCode: 401,
-      body: { message: "Unauthorized.", details: error },
-    };
-  }
+		return {
+			statusCode: 200,
+			headers: {
+				"Set-Cookie": `session-token=${session_token}; Expires=${expireTime}; Path=/; SameSite=None; Secure;`,
+			},
+			body: {
+				message: "Success!",
+				session_token: session_token,
+				timestamp: currTime,
+				user_id: user.user_id.S,
+				department: user.department_name.S,
+				tags: user.tags.L.map((el) => el.S),
+			},
+		};
+	} catch (error) {
+		console.log(error);
+		return {
+			statusCode: 401,
+			body: { message: "Unauthorized.", details: error },
+		};
+	}
 }
 
 async function getUserOverview(cookies, body) {
-  // Check user + update local cache
-  if ((await checkLogin(cookies)).statusCode != 200) {
-    return {
-      statusCode: 400,
-    };
-  }
+	// Check user + update local cache
+	if ((await checkLogin(cookies)).statusCode != 200) {
+		return {
+			statusCode: 400,
+		};
+	}
 
-  // Check if user has access
-  let user = user_cache.find(
-    (el) => el.session_token == cookies["session-token"]
-  );
-  if (
-    body.user_id &&
-    user.user_id != body.user_id &&
-    !user.tags.includes("mentor")
-  ) {
-    return {
-      statusCode: 403,
-    };
-  }
+	// Check if user has access
+	let user = user_cache.find(
+		(el) => el.session_token == cookies["session-token"],
+	);
+	if (
+		body.user_id &&
+		user.user_id != body.user_id &&
+		!user.tags.includes("mentor")
+	) {
+		return {
+			statusCode: 403,
+		};
+	}
 
-  let response = await getUserOverviewDB(body.user_id || user.user_id),
-    res = {};
-  res.initiative_mins = response.initiative_mins.N;
-  res.user_id = response.user_id.S;
-  res.department_name = response.department_name.S;
-  res.name = response.name.S;
-  res.email = response.email.S;
-  res.tags = response.tags.L.map((el) => el.S);
+	let response = await getUserOverviewDB(body.user_id || user.user_id);
+	let res = {};
+	res.initiative_mins = response.initiative_mins.N;
+	res.user_id = response.user_id.S;
+	res.department_name = response.department_name.S;
+	res.name = response.name.S;
+	res.email = response.email.S;
+	res.tags = response.tags.L.map((el) => el.S);
 
-  return {
-    statusCode: 200,
-    body: res,
-  };
+	return {
+		statusCode: 200,
+		body: res,
+	};
 }
 
 async function getAllUsersOverview(cookies, body) {
-  // Check user + update local cache
-  if ((await checkLogin(cookies)).statusCode != 200) {
-    return {
-      statusCode: 400,
-    };
-  }
+	// Check user + update local cache
+	if ((await checkLogin(cookies)).statusCode != 200) {
+		return {
+			statusCode: 400,
+		};
+	}
 
-  // Check if user has access
-  let user = user_cache.find(
-    (el) => el.session_token == cookies["session-token"]
-  );
-  if (!user.tags.includes("mentor")) {
-    return {
-      statusCode: 403,
-    };
-  }
+	// Check if user has access
+	let user = user_cache.find(
+		(el) => el.session_token == cookies["session-token"],
+	);
+	if (!user.tags.includes("mentor")) {
+		return {
+			statusCode: 403,
+		};
+	}
 
-  let response = await getAllUsersOverviewDB();
-  response.map((res) => {
-    res.initiative_mins = res.initiative_mins.N;
-    res.user_id = res.user_id.S;
-    res.department_name = res.department_name.S;
-    res.name = res.name.S;
-    res.email = res.email.S;
-    res.tags = res.tags.L.map((el) => el.S);
-  });
+	let response = await getAllUsersOverviewDB();
+	response.map((res) => {
+		res.initiative_mins = res.initiative_mins.N;
+		res.user_id = res.user_id.S;
+		res.department_name = res.department_name.S;
+		res.name = res.name.S;
+		res.email = res.email.S;
+		res.tags = res.tags.L.map((el) => el.S);
+	});
 
-  return {
-    statusCode: 200,
-    body: response,
-  };
+	return {
+		statusCode: 200,
+		body: response,
+	};
 }
 
 async function batchAddStudents(cookies, body) {
-  try {
-    // Check user + update local cache
-    if ((await checkLogin(cookies)).statusCode != 200) {
-      return {
-        statusCode: 400,
-      };
-    }
+	try {
+		// Check user + update local cache
+		if ((await checkLogin(cookies)).statusCode != 200) {
+			return {
+				statusCode: 400,
+			};
+		}
 
-    // Check if user has access
-    let user = user_cache.find(
-      (el) => el.session_token == cookies["session-token"]
-    );
-    if (!user.tags.includes("mentor")) {
-      return {
-        statusCode: 403,
-      };
-    }
+		// Check if user has access
+		let user = user_cache.find(
+			(el) => el.session_token == cookies["session-token"],
+		);
+		if (!user.tags.includes("mentor")) {
+			return {
+				statusCode: 403,
+			};
+		}
 
-    let { names, emails, departments, tags_s } = body;
-    // let g_names = g_data.map((el) => el.name),
-    //   g_emails = body.department || body.departments,
-    //   emails = body.emails,
-    //   department_names = body.departments,
-    //   tags_s = body.tags_s;
+		let { names, emails, departments, tags_s } = body;
+		// let g_names = g_data.map((el) => el.name),
+		//   g_emails = body.department || body.departments,
+		//   emails = body.emails,
+		//   department_names = body.departments,
+		//   tags_s = body.tags_s;
 
-    if (!(
-      Array.isArray(names) && Array.isArray(emails) && Array.isArray(departments) && Array.isArray(tags_s)
-    )) {
-      throw new Error(
-        "Inputs must be arrays of equal size."
-      );
-    }
+		if (
+			!(
+				Array.isArray(names) &&
+				Array.isArray(emails) &&
+				Array.isArray(departments) &&
+				Array.isArray(tags_s)
+			)
+		) {
+			throw new Error("Inputs must be arrays of equal size.");
+		}
 
-    let lenArr = emails.length;
+		let lenArr = emails.length;
 
-    if (names.length != lenArr || departments.length != lenArr || tags_s.length != lenArr) {
-      throw new Error(
-        "Inputs must be arrays of equal size."
-      );
-    }
+		if (
+			names.length != lenArr ||
+			departments.length != lenArr ||
+			tags_s.length != lenArr
+		) {
+			throw new Error("Inputs must be arrays of equal size.");
+		}
 
-    await batchAddUsersDB(
-      emails,
-      names,
-      departments,
-      tags_s
-    );
+		await batchAddUsersDB(emails, names, departments, tags_s);
 
-    return {
-      statusCode: 200,
-    };
-  } catch (error) {
-    console.log(error);
-    return {
-      statusCode: 401,
-      body: { message: "Unauthorized.", details: error },
-    };
-  }
+		return {
+			statusCode: 200,
+		};
+	} catch (error) {
+		console.log(error);
+		return {
+			statusCode: 401,
+			body: { message: "Unauthorized.", details: error },
+		};
+	}
 }
 
 async function batchDeleteUsers(cookies, body) {
-  // Check user + update local cache
-  if ((await checkLogin(cookies)).statusCode != 200) {
-    return {
-      statusCode: 400,
-    };
-  }
+	// Check user + update local cache
+	if ((await checkLogin(cookies)).statusCode != 200) {
+		return {
+			statusCode: 400,
+		};
+	}
 
-  // Check if user has access
-  let user = user_cache.find(
-    (el) => el.session_token == cookies["session-token"]
-  );
-  if (!user.tags.includes("mentor")) {
-    return {
-      statusCode: 403,
-    };
-  }
+	// Check if user has access
+	let user = user_cache.find(
+		(el) => el.session_token == cookies["session-token"],
+	);
+	if (!user.tags.includes("mentor")) {
+		return {
+			statusCode: 403,
+		};
+	}
 
-  await batchDeleteUsersDB(body.user_ids || body.user_id);
-  return { statusCode: 200 };
+	await batchDeleteUsersDB(body.user_ids || body.user_id);
+	return { statusCode: 200 };
 }
 
 async function batchCleanUsers(cookies, body) {
-  // Check user + update local cache
-  if ((await checkLogin(cookies)).statusCode != 200) {
-    return {
-      statusCode: 400,
-    };
-  }
+	// Check user + update local cache
+	if ((await checkLogin(cookies)).statusCode != 200) {
+		return {
+			statusCode: 400,
+		};
+	}
 
-  // Check if user has access
-  let user = user_cache.find(
-    (el) => el.session_token == cookies["session-token"]
-  );
-  if (!user.tags.includes("mentor")) {
-    return {
-      statusCode: 403,
-    };
-  }
+	// Check if user has access
+	let user = user_cache.find(
+		(el) => el.session_token == cookies["session-token"],
+	);
+	if (!user.tags.includes("mentor")) {
+		return {
+			statusCode: 403,
+		};
+	}
 
-  batchCleanUsersDB(body.user_ids || body.user_id);
-  return { statusCode: 200 };
+	batchCleanUsersDB(body.user_ids || body.user_id);
+	return { statusCode: 200 };
 }
 
 async function getUserInitiativeData(cookies, body) {
-  // Check user + update local cache
-  if ((await checkLogin(cookies)).statusCode != 200) {
-    return {
-      statusCode: 400,
-    };
-  }
+	// Check user + update local cache
+	if ((await checkLogin(cookies)).statusCode != 200) {
+		return {
+			statusCode: 400,
+		};
+	}
 
-  // Check if user has access
-  let user = user_cache.find(
-    (el) => el.session_token == cookies["session-token"]
-  );
-  if (
-    body.user_id &&
-    user.user_id != body.user_id &&
-    !user.tags.includes("mentor")
-  ) {
-    return {
-      statusCode: 403,
-    };
-  }
+	// Check if user has access
+	let user = user_cache.find(
+		(el) => el.session_token == cookies["session-token"],
+	);
+	if (
+		body.user_id &&
+		user.user_id != body.user_id &&
+		!user.tags.includes("mentor")
+	) {
+		return {
+			statusCode: 403,
+		};
+	}
 
-  let res = await getUserInitiativeDataDB(body.user_id || user.user_id);
-  res.initiative_mins = res.initiative_mins.N;
-  res.initiative_data = res.initiative_data.L.map((el) => {
-    let obj = {};
-    obj.initiative_id = el.M.initiative_id.S;
-    obj.prep_time = el.M.prep_time.BOOL;
-    obj.duration = el.M.duration.N;
-    obj.start_time = el.M.start_time.N;
-    obj.timestamp = el.M.timestamp.N;
-    return obj;
-  });
+	let res = await getUserInitiativeDataDB(body.user_id || user.user_id);
+	res.initiative_mins = res.initiative_mins.N;
+	res.initiative_data = res.initiative_data.L.map((el) => {
+		let obj = {};
+		obj.initiative_id = el.M.initiative_id.S;
+		obj.prep_time = el.M.prep_time.BOOL;
+		obj.duration = el.M.duration.N;
+		obj.start_time = el.M.start_time.N;
+		obj.timestamp = el.M.timestamp.N;
+		return obj;
+	});
 
-  return {
-    statusCode: 200,
-    body: res,
-  };
+	return {
+		statusCode: 200,
+		body: res,
+	};
 }
 
 async function addInitiativeDataToUser(cookies, body) {
-  // Check user + update local cache
-  if ((await checkLogin(cookies)).statusCode != 200) {
-    return {
-      statusCode: 400,
-    };
-  }
+	// Check user + update local cache
+	if ((await checkLogin(cookies)).statusCode != 200) {
+		return {
+			statusCode: 400,
+		};
+	}
 
-  let { user_id, initiative_id, prep_time, duration, start_time } = body;
+	let { user_id, initiative_id, prep_time, duration, start_time } = body;
 
-  // Check if user has access
-  let user = user_cache.find(
-    (el) => el.session_token == cookies["session-token"]
-  );
+	// Check if user has access
+	let user = user_cache.find(
+		(el) => el.session_token == cookies["session-token"],
+	);
 
-  if (user_id && user.user_id != user_id) {
-    return {
-      statusCode: 403,
-    };
-  }
+	if (user_id && user.user_id != user_id) {
+		return {
+			statusCode: 403,
+		};
+	}
 
-  if (
-    duration > maxInitiativeLogDuration
-    || start_time > timestamp()
-    || start_time < timestamp() - daysToLog * 24 * 60
-  ) {
-    return {
-      statusCode: 400,
-    };
-  }
+	if (
+		duration > maxInitiativeLogDuration ||
+		start_time > timestamp() ||
+		start_time < timestamp() - daysToLog * 24 * 60
+	) {
+		return {
+			statusCode: 400,
+		};
+	}
 
-  if (
-    await addInitiativeDataToUserDB(
-      user_id || user.user_id,
-      initiative_id,
-      prep_time,
-      duration,
-      start_time,
-      timestamp()
-    )
-  ) {
-    return { statusCode: 200 };
-  }
+	if (
+		await addInitiativeDataToUserDB(
+			user_id || user.user_id,
+			initiative_id,
+			prep_time,
+			duration,
+			start_time,
+			timestamp(),
+		)
+	) {
+		return { statusCode: 200 };
+	}
 
-  return { statusCode: 400 };
+	return { statusCode: 400 };
 }
 
 async function addInitiative(cookies, body) {
-  // Check user + update local cache
-  if ((await checkLogin(cookies)).statusCode != 200) {
-    return { statusCode: 400 };
-  }
+	// Check user + update local cache
+	if ((await checkLogin(cookies)).statusCode != 200) {
+		return { statusCode: 400 };
+	}
 
-  // Check if user has access
-  let user = user_cache.find(
-    (el) => el.session_token == cookies["session-token"]
-  );
-  if (!user.tags.includes("mentor")) {
-    return { statusCode: 403 };
-  }
+	// Check if user has access
+	let user = user_cache.find(
+		(el) => el.session_token == cookies["session-token"],
+	);
+	if (!user.tags.includes("mentor")) {
+		return { statusCode: 403 };
+	}
 
-  await addInitiativeDB(
-    body.initiative_name,
-    body.picture,
-    body.description,
-    body.categories,
-    [...new Set(body.leads)]
-  );
-  return { statusCode: 200 };
+	await addInitiativeDB(
+		body.initiative_name,
+		body.picture,
+		body.description,
+		body.categories,
+		[...new Set(body.leads)],
+	);
+	return { statusCode: 200 };
 }
 
 async function getInitiative(body) {
-  let res = await getInitiativeDB(body.initiative_id);
-  res.initiative_name = res.initiative_name.S;
-  res.description = res.description.S;
-  res.picture = res.picture.S;
-  res.categories = res.categories.L.map((el) => el.S);
-  res.total_mins = parseInt(res.total_mins.N);
-  res.total_participants = parseInt(res.total_participants.N);
-  res.leads = res.leads.L.map((el) => el.S);
+	let res = await getInitiativeDB(body.initiative_id);
+	res.initiative_name = res.initiative_name.S;
+	res.description = res.description.S;
+	res.picture = res.picture.S;
+	res.categories = res.categories.L.map((el) => el.S);
+	res.total_mins = parseInt(res.total_mins.N);
+	res.total_participants = parseInt(res.total_participants.N);
+	res.leads = res.leads.L.map((el) => el.S);
 
-  return {
-    statusCode: 200,
-    body: res,
-  };
+	return {
+		statusCode: 200,
+		body: res,
+	};
 }
 
 async function getAllInitiatives() {
-  let res = await getAllInitiativesDB();
-  res.map((el) => {
-    el.initiative_id = el.initiative_id.S;
-    el.initiative_name = el.initiative_name.S;
-    el.description = el.description.S;
-    el.picture = el.picture.S;
-    el.categories = el.categories.L.map((el2) => el2.S);
-    el.total_mins = parseInt(el.total_mins.N);
-    el.total_participants = parseInt(el.total_participants.N);
-    el.leads = el.leads.L.map((el2) => el2.S);
-  });
+	let res = await getAllInitiativesDB();
+	res.map((el) => {
+		el.initiative_id = el.initiative_id.S;
+		el.initiative_name = el.initiative_name.S;
+		el.description = el.description.S;
+		el.picture = el.picture.S;
+		el.categories = el.categories.L.map((el2) => el2.S);
+		el.total_mins = parseInt(el.total_mins.N);
+		el.total_participants = parseInt(el.total_participants.N);
+		el.leads = el.leads.L.map((el2) => el2.S);
+	});
 
-  return {
-    statusCode: 200,
-    body: res,
-  };
+	return {
+		statusCode: 200,
+		body: res,
+	};
 }
 
 async function batchGetNames(body) {
-  let res = await batchGetNamesDB(body.user_ids);
-  res = res.map((el) => {
-    return { name: el.name.S, user_id: el.user_id.S };
-  });
-  res = body.user_ids.map((el) => res.find((el2) => el2.user_id == el).name);
+	let res = await batchGetNamesDB(body.user_ids);
+	res = res.map((el) => {
+		return { name: el.name.S, user_id: el.user_id.S };
+	});
+	res = body.user_ids.map((el) => res.find((el2) => el2.user_id == el).name);
 
-  return {
-    statusCode: 200,
-    body: res,
-  };
+	return {
+		statusCode: 200,
+		body: res,
+	};
 }
 
 async function batchGetInitiativeNames(body) {
-  let res = await batchGetInitiativeNamesDB(body.initiative_ids);
-  console.log(res);
-  res = res.map((el) => {
-    return {
-      initiative_name: el.initiative_name.S,
-      initiative_id: el.initiative_id.S,
-    };
-  });
-  res = body.initiative_ids.map(
-    (el) => res.find((el2) => el2.initiative_id == el).initiative_name
-  );
+	let res = await batchGetInitiativeNamesDB(body.initiative_ids);
+	console.log(res);
+	res = res.map((el) => {
+		return {
+			initiative_name: el.initiative_name.S,
+			initiative_id: el.initiative_id.S,
+		};
+	});
+	res = body.initiative_ids.map(
+		(el) => res.find((el2) => el2.initiative_id == el).initiative_name,
+	);
 
-  return {
-    statusCode: 200,
-    body: res,
-  };
+	return {
+		statusCode: 200,
+		body: res,
+	};
+}
+
+async function initStudent(origin, body) {
+	try {
+		setOrigin(origin);
+		const { code } = body;
+		const { tokens, oauth2Client } = await getTokens(code);
+		const g_data = await getClientID(tokens, oauth2Client);
+		const { name, email } = g_data;
+
+		if (!email.includes("@htps.us")) {
+			return {
+				statusCode: 403,
+			};
+		}
+
+		// ISO string
+		let init_start = "2024-01-02T22:30:00Z";
+		let init_end = "2024-01-03T01:00:00Z";
+		if (process.env.cloud) {
+			init_start = process.env.init_start;
+			init_end = process.env.init_end;
+		}
+
+		if (new Date() > new Date(init_start) && new Date() < new Date(init_end)) {
+			return {
+				statusCode: 403,
+			};
+		}
+
+		let { department, new_student } = body;
+
+		if (typeof new_student === "string") {
+			new_student = new_student.toLowerCase() === "true";
+		}
+
+		let tags = ["student"];
+		if (new_student) {
+			tags.push("new");
+		}
+
+		await batchAddUsersDB([email], [name], [department], [tags]);
+
+		return {
+			statusCode: 200,
+			body: { message: "Addition successful" },
+		};
+	} catch (error) {
+		console.log(error);
+		return {
+			statusCode: 401,
+			body: { message: "Unauthorized.", details: error },
+		};
+	}
 }
 
 module.exports = {
-  forceInit,
-  cleanCacheAndDatabase,
-  homepage,
-  checkLogin,
-  loginClient,
-  getUserOverview,
-  getAllUsersOverview,
-  batchAddStudents,
-  batchDeleteUsers,
-  batchCleanUsers,
-  getUserInitiativeData,
-  addInitiativeDataToUser,
-  addInitiative,
-  getInitiative,
-  getAllInitiatives,
-  batchGetNames,
-  batchGetInitiativeNames,
+	forceInit,
+	cleanCacheAndDatabase,
+	homepage,
+	checkLogin,
+	loginClient,
+	getUserOverview,
+	getAllUsersOverview,
+	batchAddStudents,
+	batchDeleteUsers,
+	batchCleanUsers,
+	getUserInitiativeData,
+	addInitiativeDataToUser,
+	addInitiative,
+	getInitiative,
+	getAllInitiatives,
+	batchGetNames,
+	batchGetInitiativeNames,
+	initStudent,
 };

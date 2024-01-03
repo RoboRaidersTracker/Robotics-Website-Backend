@@ -62,7 +62,6 @@ async function initSampleData() {
     await batchAddUsersDB(
       "eshaandebnath@gmail.com",
       "Eshaan Debnath",
-      "https://lh3.googleusercontent.com/a/AAcHTtfsmybpx59Z8dwUWN1saEu0Cm8Pwsl_h_PKns9e5w=s100",
       "Programming",
       ["mentor", "student"]
     );
@@ -139,8 +138,8 @@ async function cleanSessionsDB(expireMins, currTime) {
     ProjectionExpression: "timestamp,session_token",
   };
 
-  let res = await ddb.send(new ScanCommand(query)),
-    delItems = [];
+  let res = await ddb.send(new ScanCommand(query));
+  let delItems = [];
 
   res.Items.forEach((session) => {
     if (parseInt(session.timestamp.N) + expireMins < currTime) {
@@ -158,7 +157,7 @@ async function cleanSessionsDB(expireMins, currTime) {
   for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
     let slice = delItems.slice(i * 25, i * 25 + 25);
     query = { RequestItems: {} };
-    query["RequestItems"][tables["sessions"]] = slice;
+    query.RequestItems[tables.sessions] = slice;
     await ddb.send(new BatchWriteItemCommand(query));
   }
 }
@@ -211,7 +210,7 @@ async function batchAddUsersDB(emails, names, departments, tags_s) {
   for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
     let slice = putItems.slice(i * 25, i * 25 + 25);
     query = { RequestItems: {} };
-    query["RequestItems"]["team75_tracking_students"] = slice;
+    query.RequestItems.team75_tracking_students = slice;
     res = await ddb.send(new BatchWriteItemCommand(query));
   }
 }
@@ -313,9 +312,7 @@ async function batchGetNamesDB(user_ids) {
     };
     res = [
       ...res,
-      ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
-        "team75_tracking_students"
-      ],
+      ...(await ddb.send(new BatchGetItemCommand(query))).Responses.team75_tracking_students,
     ];
   }
   return res;
@@ -530,7 +527,7 @@ async function batchCleanUsersDB(user_ids) {
   for (let i = 0; i < Math.ceil(putItems.length / 25); i++) {
     let slice = putItems.slice(i * 25, i * 25 + 25);
     query = { RequestItems: {} };
-    query["RequestItems"]["team75_tracking_students"] = slice;
+    query.RequestItems.team75_tracking_students = slice;
     await ddb.send(new BatchWriteItemCommand(query));
   }
 }
@@ -555,7 +552,7 @@ async function batchDeleteUsersDB(user_ids) {
   for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
     let slice = delItems.slice(i * 25, i * 25 + 25);
     query = { RequestItems: {} };
-    query["RequestItems"]["team75_tracking_students"] = slice;
+    query.RequestItems.team75_tracking_students = slice;
     await ddb.send(new BatchWriteItemCommand(query));
   }
 }
@@ -708,9 +705,7 @@ async function batchGetInitiativeNamesDB(initiative_ids) {
     };
     res = [
       ...res,
-      ...(await ddb.send(new BatchGetItemCommand(query))).Responses[
-        "team75_tracking_initiatives"
-      ],
+      ...(await ddb.send(new BatchGetItemCommand(query))).Responses.team75_tracking_initiatives,
     ];
   }
   return res;
@@ -778,7 +773,7 @@ async function batchDeleteInitiativesDB(initiative_ids) {
   for (let i = 0; i < Math.ceil(delItems.length / 25); i++) {
     let slice = delItems.slice(i * 25, i * 25 + 25);
     query = { RequestItems: {} };
-    query["RequestItems"]["team75_tracking_initiatives"] = slice;
+    query.RequestItems.team75_tracking_initiatives = slice;
     await ddb.send(new BatchWriteItemCommand(query));
   }
 }
@@ -819,23 +814,23 @@ function unpackData(data) {
 
       if (typeof value === "object") {
         if (value.hasOwnProperty("N")) {
-          unpackedData[key] = parseInt(value["N"]);
+          unpackedData[key] = parseInt(value.N);
         } else if (value.hasOwnProperty("S")) {
-          unpackedData[key] = value["S"];
+          unpackedData[key] = value.S;
         } else if (value.hasOwnProperty("BOOL")) {
-          unpackedData[key] = value["BOOL"];
+          unpackedData[key] = value.BOOL;
         } else if (value.hasOwnProperty("L")) {
           let list_values = [];
-          for (const i in value["L"]) {
+          for (const i in value.L) {
             let itemValue = "";
-            for (const itemKey in value["L"][i]) {
-              itemValue += value["L"][i][itemKey]["S"];
+            for (const itemKey in value.L[i]) {
+              itemValue += value.L[i][itemKey].S;
             }
             list_values.push(itemValue);
           }
           unpackedData[key] = list_values;
         } else if (value.hasOwnProperty("M")) {
-          unpackedData[key] = unpackData(value["M"]);
+          unpackedData[key] = unpackData(value.M);
         }
       }
     }

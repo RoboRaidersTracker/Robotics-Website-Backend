@@ -1,0 +1,18 @@
+{
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "style": {
+        "useConst": "off",
+        "noParameterAssign": "off"
+      },
+      "suspicious": {
+        "noDoubleEquals": "off",
+        "noPrototypeBuiltins": "off"
+      },
+      "complexity": {
+        "noForEach": "off"
+      }
+    }
+  }
+}

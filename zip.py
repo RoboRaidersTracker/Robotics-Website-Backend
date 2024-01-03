@@ -1,7 +1,6 @@
 import subprocess
 import os
 import zipfile
-import shutil
 
 def zipdir(path, ziph):
   # ziph is zipfile handle
