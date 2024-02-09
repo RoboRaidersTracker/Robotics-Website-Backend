@@ -36,7 +36,7 @@ async function getClientID(tokens, oauth2Client) {
 
 	let response = await peopleAPI.get({
 		resourceName: "people/me",
-		personFields: "names,emailAddresses,photos",
+		personFields: "names,emailAddresses", //,photos",
 		auth: client,
 	});
 
